@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -31,7 +34,9 @@ jobs:
         run: pnpm build
 
       - name: Configure D1 database id
-        run: sed -i "s/00000000-0000-0000-0000-000000000000/${{ vars.CLOUDFLARE_D1_DATABASE_ID }}/g" apps/api/wrangler.jsonc
+        run: |
+          sed -i "s/__CLOUDFLARE_D1_DATABASE_NAME__/${{ vars.CLOUDFLARE_D1_DATABASE_NAME }}/g" apps/api/wrangler.jsonc
+          sed -i "s/00000000-0000-0000-0000-000000000000/${{ vars.CLOUDFLARE_D1_DATABASE_ID }}/g" apps/api/wrangler.jsonc
 
       - name: Apply D1 migrations
         uses: cloudflare/wrangler-action@v3
@@ -39,7 +44,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/api
-          command: d1 migrations apply surescore-db --remote
+          command: d1 migrations apply ${{ vars.CLOUDFLARE_D1_DATABASE_NAME }} --remote
 
       - name: Deploy API worker
         uses: cloudflare/wrangler-action@v3

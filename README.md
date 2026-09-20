@@ -35,6 +35,7 @@ The deploy workflow expects these GitHub secrets/variables:
 - `secrets.CLOUDFLARE_API_TOKEN`
 - `secrets.CLOUDFLARE_ACCOUNT_ID`
 - `vars.CLOUDFLARE_PAGES_PROJECT`
+- `vars.CLOUDFLARE_D1_DATABASE_NAME`
 - `vars.CLOUDFLARE_D1_DATABASE_ID`
 
-The worker is configured with a default D1 database name of `surescore-db`. If you use a different database name, update `/home/runner/work/SureScore/SureScore/apps/api/wrangler.jsonc` and `/home/runner/work/SureScore/SureScore/.github/workflows/deploy.yml` together.
+The worker configuration and deploy workflow both read the D1 database name/id, so keep `apps/api/wrangler.jsonc` and `.github/workflows/deploy.yml` aligned with the same Cloudflare variables.

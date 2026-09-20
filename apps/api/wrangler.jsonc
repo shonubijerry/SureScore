@@ -9,7 +9,7 @@
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "surescore-db",
+			"database_name": "__CLOUDFLARE_D1_DATABASE_NAME__",
 			"database_id": "00000000-0000-0000-0000-000000000000",
 			"preview_database_id": "00000000-0000-0000-0000-000000000000",
 			"migrations_dir": "../../packages/db/prisma/migrations",
