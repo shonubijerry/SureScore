@@ -5,7 +5,7 @@
   "description": "Prediction app for football",
   "packageManager": "pnpm@10.16.1",
   "scripts": {
-    "build": "corepack pnpm --filter @surescore/shared build && corepack pnpm --filter @surescore/db build && corepack pnpm --filter @surescore/api build && corepack pnpm --filter @surescore/ui build",
+    "build": "corepack pnpm -r --filter \"./packages/**\" --filter \"./apps/**\" build",
     "lint": "corepack pnpm --filter @surescore/ui lint",
     "test": "corepack pnpm --filter @surescore/shared build && corepack pnpm --filter @surescore/db build && corepack pnpm --filter @surescore/api test",
     "dev:ui": "corepack pnpm --filter @surescore/ui dev",
