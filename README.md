@@ -37,5 +37,6 @@ The deploy workflow expects these GitHub secrets/variables:
 - `vars.CLOUDFLARE_PAGES_PROJECT`
 - `vars.CLOUDFLARE_D1_DATABASE_NAME`
 - `vars.CLOUDFLARE_D1_DATABASE_ID`
+- `vars.CLOUDFLARE_D1_PREVIEW_DATABASE_ID`
 
 The worker configuration and deploy workflow both read the D1 database name/id, so keep `apps/api/wrangler.jsonc` and `.github/workflows/deploy.yml` aligned with the same Cloudflare variables.

@@ -20,6 +20,7 @@ export const services = [
 
 export interface HealthResponse {
   app: string;
+  binding: string;
   service: "api";
   status: "ok";
   database: string;

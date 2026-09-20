@@ -36,7 +36,8 @@ jobs:
       - name: Configure D1 database id
         run: |
           sed -i "s/__CLOUDFLARE_D1_DATABASE_NAME__/${{ vars.CLOUDFLARE_D1_DATABASE_NAME }}/g" apps/api/wrangler.jsonc
-          sed -i "s/00000000-0000-0000-0000-000000000000/${{ vars.CLOUDFLARE_D1_DATABASE_ID }}/g" apps/api/wrangler.jsonc
+          sed -i "s/__CLOUDFLARE_D1_DATABASE_ID__/${{ vars.CLOUDFLARE_D1_DATABASE_ID }}/g" apps/api/wrangler.jsonc
+          sed -i "s/__CLOUDFLARE_D1_PREVIEW_DATABASE_ID__/${{ vars.CLOUDFLARE_D1_PREVIEW_DATABASE_ID }}/g" apps/api/wrangler.jsonc
 
       - name: Apply D1 migrations
         uses: cloudflare/wrangler-action@v3
