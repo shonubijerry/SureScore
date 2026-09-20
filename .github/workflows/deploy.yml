@@ -17,13 +17,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.16.1
 
       - name: Install dependencies
-        run: npm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build workspaces
-        run: npm run build
+        run: pnpm build
 
       - name: Configure D1 database id
         run: sed -i "s/00000000-0000-0000-0000-000000000000/${{ vars.CLOUDFLARE_D1_DATABASE_ID }}/g" apps/api/wrangler.jsonc

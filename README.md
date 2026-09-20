@@ -1,6 +1,6 @@
 # SureScore
 
-SureScore is now scaffolded as a minimal npm-workspaces monorepo with:
+SureScore is now scaffolded as a minimal pnpm-workspaces monorepo with:
 
 - `apps/ui` — React + Vite frontend ready to deploy to Cloudflare Pages
 - `apps/api` — Cloudflare Worker API
@@ -10,9 +10,9 @@ SureScore is now scaffolded as a minimal npm-workspaces monorepo with:
 ## Getting started
 
 ```bash
-npm install
-npm run build
-npm test
+pnpm install
+pnpm build
+pnpm test
 ```
 
 ## Monorepo layout

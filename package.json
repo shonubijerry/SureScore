@@ -3,19 +3,29 @@
   "private": true,
   "version": "0.1.0",
   "description": "Prediction app for football",
+  "packageManager": "pnpm@10.16.1",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspace @surescore/shared && npm run build --workspace @surescore/db && npm run build --workspace @surescore/api && npm run build --workspace @surescore/ui",
-    "lint": "npm run lint --workspace @surescore/ui",
-    "test": "npm run test --workspace @surescore/api",
-    "dev:ui": "npm run dev --workspace @surescore/ui",
-    "dev:api": "npm run dev --workspace @surescore/api",
-    "cf-typegen": "npm run cf-typegen --workspace @surescore/api"
+    "build": "corepack pnpm --filter @surescore/shared build && corepack pnpm --filter @surescore/db build && corepack pnpm --filter @surescore/api build && corepack pnpm --filter @surescore/ui build",
+    "lint": "corepack pnpm --filter @surescore/ui lint",
+    "test": "corepack pnpm --filter @surescore/shared build && corepack pnpm --filter @surescore/db build && corepack pnpm --filter @surescore/api test",
+    "dev:ui": "corepack pnpm --filter @surescore/ui dev",
+    "dev:api": "corepack pnpm --filter @surescore/api dev",
+    "cf-typegen": "corepack pnpm --filter @surescore/api cf-typegen"
   },
   "engines": {
     "node": ">=22.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma",
+      "workerd"
+    ]
   }
 }

@@ -16,6 +16,7 @@
 		"@surescore/shared": "workspace:*"
 	},
 	"devDependencies": {
+		"@cloudflare/workers-types": "^5.20260920.1",
 		"@cloudflare/vitest-plugin": "^1.0.0",
 		"typescript": "^5.5.2",
 		"vitest": "~4.1.0",

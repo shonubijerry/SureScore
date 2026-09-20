@@ -1,6 +1,6 @@
 import { PrismaD1 } from "@prisma/adapter-d1";
 import type { D1Database } from "@cloudflare/workers-types";
-import { PrismaClient } from "../generated/client";
+import { PrismaClient } from "../generated/client/index.js";
 
 export const d1BindingName = "DB";
 export const databaseProvider = "Cloudflare D1 + Prisma (no engine)";
