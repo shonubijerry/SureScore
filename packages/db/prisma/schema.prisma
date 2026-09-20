@@ -1,0 +1,18 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "client"
+  output     = "../generated/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Prediction {
+  id         String   @id @default(cuid())
+  homeTeam   String
+  awayTeam   String
+  kickoffAt  DateTime
+  createdAt  DateTime @default(now())
+}

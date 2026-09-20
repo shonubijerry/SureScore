@@ -1,0 +1,7 @@
+CREATE TABLE "Prediction" (
+  "id" TEXT NOT NULL PRIMARY KEY,
+  "homeTeam" TEXT NOT NULL,
+  "awayTeam" TEXT NOT NULL,
+  "kickoffAt" DATETIME NOT NULL,
+  "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

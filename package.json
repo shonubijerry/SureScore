@@ -1,0 +1,21 @@
+{
+  "name": "surescore",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Prediction app for football",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @surescore/shared && npm run build --workspace @surescore/db && npm run build --workspace @surescore/api && npm run build --workspace @surescore/ui",
+    "lint": "npm run lint --workspace @surescore/ui",
+    "test": "npm run test --workspace @surescore/api",
+    "dev:ui": "npm run dev --workspace @surescore/ui",
+    "dev:api": "npm run dev --workspace @surescore/api",
+    "cf-typegen": "npm run cf-typegen --workspace @surescore/api"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
