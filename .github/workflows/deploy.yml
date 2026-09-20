@@ -1,0 +1,67 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.16.1
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspaces
+        run: pnpm build
+
+      - name: Prepare API wrangler config
+        run: |
+          TMP_CONFIG=$(mktemp /tmp/surescore-api-wrangler-XXXXXX.jsonc)
+          sed \
+            -e "s#__CLOUDFLARE_D1_DATABASE_NAME__/${{ vars.CLOUDFLARE_D1_DATABASE_NAME }}/g" \
+            -e "s#__CLOUDFLARE_D1_DATABASE_ID__/${{ vars.CLOUDFLARE_D1_DATABASE_ID }}/g" \
+            -e "s#__CLOUDFLARE_D1_PREVIEW_DATABASE_ID__/${{ vars.CLOUDFLARE_D1_PREVIEW_DATABASE_ID }}/g" \
+            apps/api/wrangler.jsonc > "$TMP_CONFIG"
+          echo "SURESCORE_API_WRANGLER_CONFIG=$TMP_CONFIG" >> "$GITHUB_ENV"
+
+      - name: Apply D1 migrations
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/api
+          command: d1 migrations apply ${{ vars.CLOUDFLARE_D1_DATABASE_NAME }} --remote --config ${{ env.SURESCORE_API_WRANGLER_CONFIG }}
+
+      - name: Deploy API worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/api
+          command: deploy --config ${{ env.SURESCORE_API_WRANGLER_CONFIG }}
+
+      - name: Deploy UI to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy apps/ui/dist --project-name ${{ vars.CLOUDFLARE_PAGES_PROJECT }}

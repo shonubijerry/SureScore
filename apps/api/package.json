@@ -1,0 +1,25 @@
+{
+	"name": "@surescore/api",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"build": "npm run typecheck && node ./scripts/build.mjs",
+		"deploy": "wrangler deploy",
+		"dev": "wrangler dev",
+		"start": "wrangler dev",
+		"test": "vitest run",
+		"cf-typegen": "wrangler types",
+		"typecheck": "tsc -p tsconfig.json --noEmit"
+	},
+	"dependencies": {
+		"@surescore/db": "workspace:*",
+		"@surescore/shared": "workspace:*"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "^5.20260920.1",
+		"@cloudflare/vitest-plugin": "^1.0.0",
+		"typescript": "^5.5.2",
+		"vitest": "~4.1.0",
+		"wrangler": "^4"
+	}
+}

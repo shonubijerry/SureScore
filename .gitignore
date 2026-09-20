@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+.wrangler/
+.DS_Store
+package-lock.json
+!package-lock.json
+apps/ui/.vite/
+packages/db/generated/
+packages/db/dev.db

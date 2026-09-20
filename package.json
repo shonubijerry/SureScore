@@ -1,0 +1,27 @@
+{
+  "name": "surescore",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Prediction app for football",
+  "packageManager": "pnpm@10.16.1",
+  "scripts": {
+    "build": "corepack pnpm -r --filter \"./packages/**\" --filter \"./apps/**\" build",
+    "lint": "corepack pnpm --filter @surescore/ui lint",
+    "test": "corepack pnpm --filter @surescore/shared build && corepack pnpm --filter @surescore/db build && corepack pnpm --filter @surescore/api test",
+    "dev:ui": "corepack pnpm --filter @surescore/ui dev",
+    "dev:api": "corepack pnpm --filter @surescore/api dev",
+    "cf-typegen": "corepack pnpm --filter @surescore/api cf-typegen"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma",
+      "workerd"
+    ]
+  }
+}
