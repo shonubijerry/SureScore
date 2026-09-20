@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "corepack pnpm --filter @surescore/shared build",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"

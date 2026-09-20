@@ -16,11 +16,7 @@ describe("SureScore API worker", () => {
 		const request = new IncomingRequest("http://example.com");
 		// Create an empty context to pass to `worker.fetch()`.
 		const ctx = createExecutionContext();
-		const response = await worker.fetch(
-			request,
-			{ DB: {} as D1Database } as never,
-			ctx,
-		);
+		const response = await worker.fetch(request, env, ctx);
 		// Wait for all `Promise`s passed to `ctx.waitUntil()` to settle before running test assertions
 		await waitOnExecutionContext(ctx);
 		expect(response.headers.get("content-type")).toContain("application/json");

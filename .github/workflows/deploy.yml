@@ -33,11 +33,15 @@ jobs:
       - name: Build workspaces
         run: pnpm build
 
-      - name: Configure D1 database id
+      - name: Prepare API wrangler config
         run: |
-          sed -i "s/__CLOUDFLARE_D1_DATABASE_NAME__/${{ vars.CLOUDFLARE_D1_DATABASE_NAME }}/g" apps/api/wrangler.jsonc
-          sed -i "s/__CLOUDFLARE_D1_DATABASE_ID__/${{ vars.CLOUDFLARE_D1_DATABASE_ID }}/g" apps/api/wrangler.jsonc
-          sed -i "s/__CLOUDFLARE_D1_PREVIEW_DATABASE_ID__/${{ vars.CLOUDFLARE_D1_PREVIEW_DATABASE_ID }}/g" apps/api/wrangler.jsonc
+          TMP_CONFIG=$(mktemp /tmp/surescore-api-wrangler-XXXXXX.jsonc)
+          sed \
+            -e "s#__CLOUDFLARE_D1_DATABASE_NAME__/${{ vars.CLOUDFLARE_D1_DATABASE_NAME }}/g" \
+            -e "s#__CLOUDFLARE_D1_DATABASE_ID__/${{ vars.CLOUDFLARE_D1_DATABASE_ID }}/g" \
+            -e "s#__CLOUDFLARE_D1_PREVIEW_DATABASE_ID__/${{ vars.CLOUDFLARE_D1_PREVIEW_DATABASE_ID }}/g" \
+            apps/api/wrangler.jsonc > "$TMP_CONFIG"
+          echo "SURESCORE_API_WRANGLER_CONFIG=$TMP_CONFIG" >> "$GITHUB_ENV"
 
       - name: Apply D1 migrations
         uses: cloudflare/wrangler-action@v3
@@ -45,7 +49,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/api
-          command: d1 migrations apply ${{ vars.CLOUDFLARE_D1_DATABASE_NAME }} --remote
+          command: d1 migrations apply ${{ vars.CLOUDFLARE_D1_DATABASE_NAME }} --remote --config ${{ env.SURESCORE_API_WRANGLER_CONFIG }}
 
       - name: Deploy API worker
         uses: cloudflare/wrangler-action@v3
@@ -53,7 +57,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/api
-          command: deploy
+          command: deploy --config ${{ env.SURESCORE_API_WRANGLER_CONFIG }}
 
       - name: Deploy UI to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
