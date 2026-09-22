@@ -16,12 +16,12 @@ export class ListSportsProvidersEndpoint extends OpenAPIRoute {
 		responses: {
 			"200": {
 				description: "Sports providers",
-				...contentJson(z.object({ sportsProviders: z.array(sportsProviderSchema) })),
+				...contentJson(z.array(sportsProviderSchema)),
 			},
 		},
 	};
 
 	async handle(c: AppContext) {
-		return c.json({ sportsProviders: sportsProviderConfigs });
+		return c.json(sportsProviderConfigs);
 	}
 }

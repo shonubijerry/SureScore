@@ -1,5 +1,6 @@
 import { fromHono } from 'chanfana'
 import { Hono } from 'hono'
+import { HTTPException } from 'hono/http-exception'
 import { d1BindingName, databaseProvider } from '@surescore/db'
 import { appName, type HealthResponse } from '@surescore/shared'
 import { authRoutes } from './routes/auth/index.js'
@@ -9,8 +10,8 @@ import type { AppEnv } from './types.js'
 
 const app = new Hono<AppEnv>()
 const openapi = fromHono(app, {
-	docs_url: '/api/docs',
-	openapi_url: '/api/openapi.json',
+	docs_url: '/api/v1/docs',
+	openapi_url: '/api/v1/openapi.json',
 	schema: {
 		info: {
 			title: 'SureScore API',
@@ -33,7 +34,27 @@ function healthResponse(database: D1Database | undefined) {
 	return body
 }
 
-openapi.get('/', (context) => context.json(healthResponse(context.env.DB)))
+app.onError((err, c) => {
+	console.error('Global error handler caught:', err)
+
+	if (err instanceof HTTPException) {
+		return err.getResponse()
+	}
+
+	return c.json(
+		{
+			success: false,
+			errors: [
+				{
+					app: appName,
+					message: 'Internal Server Error',
+				},
+			],
+		},
+		500,
+	)
+})
+
 openapi.get('/api/health', (context) => context.json(healthResponse(context.env.DB)))
 
 openapi.route('/api/auth', authRoutes)

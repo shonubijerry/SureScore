@@ -16,12 +16,12 @@ export class ListPaymentProvidersEndpoint extends OpenAPIRoute {
 		responses: {
 			"200": {
 				description: "Payment providers",
-				...contentJson(z.object({ paymentProviders: z.array(paymentProviderSchema) })),
+				...contentJson(z.array(paymentProviderSchema)),
 			},
 		},
 	};
 
 	async handle(c: AppContext) {
-		return c.json({ paymentProviders: paymentProviderConfigs });
+		return c.json(paymentProviderConfigs);
 	}
 }

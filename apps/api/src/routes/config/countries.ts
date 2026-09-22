@@ -19,12 +19,12 @@ export class ListCountriesEndpoint extends OpenAPIRoute {
 		responses: {
 			"200": {
 				description: "Supported countries",
-				...contentJson(z.object({ countries: z.array(countrySchema) })),
+				...contentJson(z.array(countrySchema)),
 			},
 		},
 	};
 
 	async handle(c: AppContext) {
-		return c.json({ countries: listSupportedCountries() });
+		return c.json(listSupportedCountries);
 	}
 }
