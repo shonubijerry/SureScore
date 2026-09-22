@@ -8,7 +8,7 @@
     "build": "corepack pnpm -r --filter \"./packages/**\" --filter \"./apps/**\" build",
     "lint": "corepack pnpm --filter @surescore/ui lint",
     "test": "corepack pnpm --filter @surescore/shared build && corepack pnpm --filter @surescore/db build && corepack pnpm --filter @surescore/api test",
-    "dev": "concurrently \"pnpm dev:api\" \"pnpm dev:ui\"",
+    "dev": "concurrently --names \"API,UI\" \"pnpm dev:api\" \"pnpm dev:ui\"",
     "dev:ui": "corepack pnpm --filter @surescore/ui dev",
     "dev:api": "corepack pnpm --filter @surescore/api dev",
     "cf-typegen": "corepack pnpm --filter @surescore/api cf-typegen"

@@ -13,13 +13,14 @@
 	},
 	"dependencies": {
 		"@surescore/db": "workspace:*",
-		"@surescore/shared": "workspace:*"
+		"@surescore/shared": "workspace:*",
+		"chanfana": "3.4.0",
+		"hono": "^4.13.8"
 	},
 	"devDependencies": {
-		"@cloudflare/workers-types": "^5.20260920.1",
 		"@cloudflare/vitest-plugin": "^1.0.0",
 		"typescript": "^5.5.2",
 		"vitest": "~4.1.0",
-		"wrangler": "^4"
+		"wrangler": "^4.136.3"
 	}
 }

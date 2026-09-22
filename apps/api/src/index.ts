@@ -1,45 +1,49 @@
+import { fromHono } from "chanfana";
+import { Hono } from "hono";
 import { d1BindingName, databaseProvider } from "@surescore/db";
 import { appName, type HealthResponse } from "@surescore/shared";
 
-type WorkerEnv = {
-	DB?: D1Database;
-};
-
-function json(body: unknown, init?: ResponseInit) {
-	return new Response(JSON.stringify(body), {
-		...init,
-		headers: {
-			"content-type": "application/json; charset=utf-8",
-			...init?.headers,
+const app = new Hono<{ Bindings: Env }>();
+const openapi = fromHono(app, {
+	docs_url: "/api/docs",
+	openapi_url: "/api/openapi.json",
+	schema: {
+		info: {
+			title: "SureScore API",
+			version: "0.1.0",
+			description: "API for SureScore football prediction pots.",
 		},
-	});
+	},
+});
+
+function healthResponse(database: D1Database | undefined) {
+	const body: HealthResponse & { binding: string } = {
+		app: appName,
+		service: "api",
+		status: "ok",
+		database: database
+			? databaseProvider
+			: `Bind ${d1BindingName} to Cloudflare D1`,
+		timestamp: new Date().toISOString(),
+		binding: d1BindingName,
+	};
+
+	return body;
 }
 
-export default {
-	async fetch(request: Request, env: WorkerEnv): Promise<Response> {
-		const { pathname } = new URL(request.url);
+openapi.get("/", (context) => context.json(healthResponse(context.env.DB)));
+openapi.get("/api/health", (context) =>
+	context.json(healthResponse(context.env.DB)),
+);
 
-		if (pathname === "/" || pathname === "/api/health") {
-			const body: HealthResponse & { binding: string } = {
-				app: appName,
-				service: "api",
-				status: "ok",
-				database: env.DB
-					? databaseProvider
-					: `Bind ${d1BindingName} to Cloudflare D1`,
-				timestamp: new Date().toISOString(),
-				binding: d1BindingName,
-			};
+app.notFound((context) =>
+	context.json(
+		{
+			app: appName,
+			status: "not_found",
+		},
+		404,
+	),
+);
 
-			return json(body);
-		}
-
-		return json(
-			{
-				app: appName,
-				status: "not_found",
-			},
-			{ status: 404 },
-		);
-	},
-} satisfies ExportedHandler<WorkerEnv>;
+export default app;
