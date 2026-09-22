@@ -7,7 +7,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "deploy": "wrangler pages deploy dist --project-name surescore-ui",
+    "deploy": "npm run build && wrangler deploy",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },

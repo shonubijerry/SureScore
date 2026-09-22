@@ -8,7 +8,7 @@ a. This UI is part of the SureScore monorepo and must remain aligned with the ro
 
 b. Use Vite + React for the frontend, not Next.js.
 
-c. Prefer Cloudflare Pages deployment for the built static bundle.
+c. Deploy the built static bundle as a Cloudflare Worker with static assets (SPA mode), not classic Cloudflare Pages.
 
 d. Keep the app mobile-first and optimized for future Android and iOS packaging.
 
