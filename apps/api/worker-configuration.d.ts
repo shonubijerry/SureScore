@@ -3,6 +3,9 @@
 // Runtime types generated with workerd@1.20260921.1 2026-09-20 nodejs_compat
 interface __BaseEnv_Env {
 	DB: D1Database;
+	SESSIONS: KVNamespace;
+	// Wrangler local dev: set in .dev.vars. Production: `wrangler secret put AUTH_SECRET`.
+	AUTH_SECRET: string;
 }
 declare namespace Cloudflare {
 	interface GlobalProps {

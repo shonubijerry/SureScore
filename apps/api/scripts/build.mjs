@@ -17,6 +17,7 @@ const config = readFileSync(resolve(packageDir, "wrangler.jsonc"), "utf8")
 		"__CLOUDFLARE_D1_PREVIEW_DATABASE_ID__",
 		"11111111-1111-1111-1111-111111111111",
 	)
+	.replaceAll("__CLOUDFLARE_KV_SESSIONS_ID__", "22222222-2222-2222-2222-222222222222")
 	.replace(
 		"\"main\": \"src/index.ts\"",
 		`"main": "${toPosixPath(resolve(packageDir, "src/index.ts"))}"`,

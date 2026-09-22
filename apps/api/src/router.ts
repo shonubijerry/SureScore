@@ -1,11 +1,13 @@
 import { fromHono } from 'chanfana'
-import { Hono, type Context } from 'hono'
+import { Hono } from 'hono'
 import { d1BindingName, databaseProvider } from '@surescore/db'
 import { appName, type HealthResponse } from '@surescore/shared'
+import { authRoutes } from './routes/auth/index.js'
+import { configRoutes } from './routes/config/index.js'
+import { payoutAccountRoutes } from './routes/payout-accounts/index.js'
+import type { AppEnv } from './types.js'
 
-export type AppContext = Context<{ Bindings: Env }>
-
-const app = new Hono<{ Bindings: Env }>()
+const app = new Hono<AppEnv>()
 const openapi = fromHono(app, {
 	docs_url: '/api/docs',
 	openapi_url: '/api/openapi.json',
@@ -33,6 +35,10 @@ function healthResponse(database: D1Database | undefined) {
 
 openapi.get('/', (context) => context.json(healthResponse(context.env.DB)))
 openapi.get('/api/health', (context) => context.json(healthResponse(context.env.DB)))
+
+openapi.route('/api/auth', authRoutes)
+openapi.route('/api/config', configRoutes)
+openapi.route('/api/payout-accounts', payoutAccountRoutes)
 
 app.notFound((context) =>
 	context.json(

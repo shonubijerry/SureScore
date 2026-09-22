@@ -15,5 +15,12 @@
 			"database_id": "d25544c9-1141-47af-b2c6-0e802240c80e",
 			"migrations_dir": "../../packages/db/prisma/migrations"
 		}
+	],
+	"kv_namespaces": [
+		// Run `wrangler kv namespace create SESSIONS` and replace this id.
+		{
+			"binding": "SESSIONS",
+			"id": "__CLOUDFLARE_KV_SESSIONS_ID__"
+		}
 	]
 }
