@@ -1,11 +1,11 @@
-import { fromHono } from 'chanfana';
-import { Hono, type Context } from 'hono';
-import { d1BindingName, databaseProvider } from '@surescore/db';
-import { appName, type HealthResponse } from '@surescore/shared';
+import { fromHono } from 'chanfana'
+import { Hono, type Context } from 'hono'
+import { d1BindingName, databaseProvider } from '@surescore/db'
+import { appName, type HealthResponse } from '@surescore/shared'
 
-export type AppContext = Context<{ Bindings: Env }>;
+export type AppContext = Context<{ Bindings: Env }>
 
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<{ Bindings: Env }>()
 const openapi = fromHono(app, {
 	docs_url: '/api/docs',
 	openapi_url: '/api/openapi.json',
@@ -16,7 +16,7 @@ const openapi = fromHono(app, {
 			description: 'API for SureScore football prediction pots.',
 		},
 	},
-});
+})
 
 function healthResponse(database: D1Database | undefined) {
 	const body: HealthResponse & { binding: string } = {
@@ -26,13 +26,13 @@ function healthResponse(database: D1Database | undefined) {
 		database: database ? databaseProvider : `Bind ${d1BindingName} to Cloudflare D1`,
 		timestamp: new Date().toISOString(),
 		binding: d1BindingName,
-	};
+	}
 
-	return body;
+	return body
 }
 
-openapi.get('/', (context) => context.json(healthResponse(context.env.DB)));
-openapi.get('/api/health', (context) => context.json(healthResponse(context.env.DB)));
+openapi.get('/', (context) => context.json(healthResponse(context.env.DB)))
+openapi.get('/api/health', (context) => context.json(healthResponse(context.env.DB)))
 
 app.notFound((context) =>
 	context.json(
@@ -42,6 +42,6 @@ app.notFound((context) =>
 		},
 		404,
 	),
-);
+)
 
-export default app;
+export default app
