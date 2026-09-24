@@ -8,7 +8,10 @@
 ## Key files
 - src/country-config.ts: supported countries, currencies, payment provider mapping, sports provider mapping
 - src/eligibility.ts: policy helpers, including the first-prediction payout completion rule
-- src/index.ts: exports for shared config and policy modules
+- src/providers/payment-provider.ts: internal `PaymentProvider` interface (fund, refund, payout, retryPayout, verify)
+- src/providers/sports-provider.ts: internal `SportsProvider` interface + normalized `SportsEvent` schema
+- src/providers/provider-registry.ts: `ProviderRegistry` resolving adapters by country via country-config
+- src/index.ts: exports for shared config, policy, and provider-abstraction modules
 
 ## Core rules
 - Nigeria is the current launched market, but country logic is config-driven
@@ -20,6 +23,7 @@
 - Prefer static config objects over DB-backed config tables unless a domain requirement demands otherwise
 - Keep this package free of provider-specific implementation details
 - Domain rules here should be explicit and testable
+- `providers/` holds only the internal interfaces/registry, never concrete adapters (Paystack, ESPN, etc. live in apps/api/src/providers)
 
 ## Commands
 - pnpm --filter @surescore/shared build

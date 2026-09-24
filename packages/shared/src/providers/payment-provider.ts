@@ -1,0 +1,68 @@
+// Internal payment provider contract (T3.1). Core domain/business logic must
+// only ever depend on these types. Provider-specific DTOs (Paystack request/
+// response shapes, etc.) must stay inside the adapter that implements this
+// interface and must never leak past it.
+
+export interface FundPotRequest {
+  potId: string;
+  userId: string;
+  countryCode: string;
+  currency: string;
+  amountMinorUnits: number;
+  /** Caller-supplied key so retried calls do not double-charge/double-credit. */
+  idempotencyKey: string;
+}
+
+export type RefundReason = "postponed" | "abandoned" | "cancelled";
+
+export interface RefundRequest {
+  potId: string;
+  userId: string;
+  countryCode: string;
+  currency: string;
+  amountMinorUnits: number;
+  reason: RefundReason;
+  idempotencyKey: string;
+}
+
+export interface PayoutRequest {
+  potId: string;
+  userId: string;
+  countryCode: string;
+  currency: string;
+  amountMinorUnits: number;
+  payoutAccountId: string;
+  idempotencyKey: string;
+}
+
+export interface RetryPayoutRequest {
+  /** Reference of the payout attempt being retried. */
+  originalReference: string;
+  payoutAccountId: string;
+  idempotencyKey: string;
+}
+
+export interface VerifyPaymentRequest {
+  reference: string;
+}
+
+export type PaymentStatus = "pending" | "successful" | "failed";
+
+export interface PaymentResult {
+  /** Provider id this result came from, e.g. "paystack". */
+  provider: string;
+  /** Provider-issued reference for the operation; used for verify/retry. */
+  reference: string;
+  status: PaymentStatus;
+  amountMinorUnits: number;
+  currency: string;
+}
+
+export interface PaymentProvider {
+  readonly id: string;
+  fund(request: FundPotRequest): Promise<PaymentResult>;
+  refund(request: RefundRequest): Promise<PaymentResult>;
+  payout(request: PayoutRequest): Promise<PaymentResult>;
+  retryPayout(request: RetryPayoutRequest): Promise<PaymentResult>;
+  verify(request: VerifyPaymentRequest): Promise<PaymentResult>;
+}

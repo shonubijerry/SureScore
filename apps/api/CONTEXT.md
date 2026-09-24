@@ -21,6 +21,13 @@
 - payout-accounts/: list, create, update, delete
 - Keep one endpoint per file and mount nested routers from each index.ts
 
+## Provider adapters
+- src/providers/payment/paystack-provider.ts: implements `@surescore/shared`'s `PaymentProvider` for Paystack
+- src/providers/sports/espn-provider.ts: implements `@surescore/shared`'s `SportsProvider` for ESPN, normalizing into `SportsEvent`
+- src/providers/registry.ts: `createProviderRegistry(env)` builds a `ProviderRegistry` with all adapters registered; backend services should resolve adapters via `registry.resolvePaymentProviderForCountry(countryCode)` / `resolveSportsProviderForCountry(countryCode)` instead of importing Paystack/ESPN classes directly
+- Needs `PAYSTACK_SECRET_KEY` env var (same pattern as `AUTH_SECRET`) — set in apps/api/.dev.vars locally, `wrangler secret put PAYSTACK_SECRET_KEY` in prod
+- test/providers/*.contract.ts: reusable contract assertions; adapter specs (paystack-provider.spec.ts, espn-provider.spec.ts) run their adapter through these plus provider-registry.spec.ts covers resolution/error behavior
+
 ## Product rules enforced here
 - Country and provider selection are configuration-driven, not hardcoded
 - User payout details must exist before a first prediction is allowed

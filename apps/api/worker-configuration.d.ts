@@ -6,6 +6,8 @@ interface __BaseEnv_Env {
 	SESSIONS: KVNamespace;
 	// Wrangler local dev: set in .dev.vars. Production: `wrangler secret put AUTH_SECRET`.
 	AUTH_SECRET: string;
+	// Wrangler local dev: set in .dev.vars. Production: `wrangler secret put PAYSTACK_SECRET_KEY`.
+	PAYSTACK_SECRET_KEY: string;
 }
 declare namespace Cloudflare {
 	interface GlobalProps {
