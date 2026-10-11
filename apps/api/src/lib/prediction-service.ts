@@ -6,6 +6,7 @@ import { HTTPException } from "hono/http-exception";
 import { createDbClient, type Pot, type Prediction, type SportsEventCache } from "@surescore/db";
 import {
 	assertHasCompletedPayoutDetails,
+	DEFAULT_TIE_BREAKS,
 	assertSameCountryEligibility,
 	EligibilityError,
 	isPredictionLocked,
@@ -37,7 +38,15 @@ const pick = (p: Pick<Prediction, "homeGoals" | "awayGoals" | "firstGoalMinute">
 /** Scoreable once the provider reports a scoreline; `final` marks the official result. */
 function outcomeOf(event: SportsEventCache): Outcome {
 	if (event.homeScore == null || event.awayScore == null) return null;
-	return { actual: { home: event.homeScore, away: event.awayScore }, final: event.isFinalResultOfficial };
+	return {
+		actual: {
+			home: event.homeScore,
+			away: event.awayScore,
+			firstGoalMinute: event.firstGoalMinute,
+			underdog: event.underdog as MatchOutcome["underdog"],
+		},
+		final: event.isFinalResultOfficial,
+	};
 }
 
 export class PredictionService {
@@ -45,7 +54,7 @@ export class PredictionService {
 
 	constructor(
 		env: Env,
-		private readonly tieBreaks: readonly TieBreakName[] = [],
+		private readonly tieBreaks: readonly TieBreakName[] = DEFAULT_TIE_BREAKS,
 	) {
 		this.db = createDbClient(env.DB);
 	}

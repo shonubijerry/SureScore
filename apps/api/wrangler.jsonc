@@ -13,7 +13,8 @@
 			"binding": "DB",
 			"database_name": "surescore_db",
 			"database_id": "d25544c9-1141-47af-b2c6-0e802240c80e",
-			"migrations_dir": "../../packages/db/prisma/migrations"
+			"migrations_dir": "../../packages/db/prisma/migrations",
+			"migrations_pattern": "../../packages/db/prisma/migrations/*/migration.sql"
 		}
 	],
 	"kv_namespaces": [

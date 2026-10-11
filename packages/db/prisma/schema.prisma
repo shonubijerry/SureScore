@@ -99,6 +99,8 @@ model SportsEventCache {
   homeScore             Int?
   awayScore             Int?
   isFinalResultOfficial Boolean  @default(false)
+  firstGoalMinute       Int? // regulation-time first goal; tie-break input
+  underdog              String? // home | away, from pre-match moneyline; tie-break input
   freshness             String   @default("cached") // live | cached | stale
   lastRefreshedAt       DateTime
   createdAt             DateTime @default(now())

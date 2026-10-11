@@ -83,3 +83,22 @@ describe("rankPredictions", () => {
 		expect(bonus(1, 0, { home: 2, away: 0 })).toBe(0);
 	});
 });
+
+describe("default tie-breaks", () => {
+	it("orders underdog backers first, then nearest first-goal minute", async () => {
+		const { DEFAULT_TIE_BREAKS } = await import("@surescore/shared");
+		const actual = { home: 1, away: 0, firstGoalMinute: 30, underdog: "home" as const };
+		const e = (item: string, home: number, away: number, firstGoalMinute: number) => ({
+			item,
+			pick: { home, away, firstGoalMinute },
+		});
+		// "near" and "far" tie on points; the nearer first-goal minute wins. "level" has fewer points.
+		const ranked = rankPredictions(
+			[e("far", 2, 1, 80), e("near", 2, 1, 31), e("level", 1, 1, 30)],
+			actual,
+			{ tieBreaks: DEFAULT_TIE_BREAKS },
+		);
+		expect(ranked.map((r) => r.item)).toEqual(["near", "far", "level"]);
+		expect(ranked.map((r) => r.rank)).toEqual([1, 2, 3]);
+	});
+});

@@ -12,6 +12,8 @@ CREATE TABLE "SportsEventCache" (
   "awayScore" INTEGER,
   "isFinalResultOfficial" BOOLEAN NOT NULL DEFAULT false,
   "freshness" TEXT NOT NULL DEFAULT 'cached',
+  "firstGoalMinute" INTEGER,
+  "underdog" TEXT,
   "lastRefreshedAt" DATETIME NOT NULL,
   "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" DATETIME NOT NULL

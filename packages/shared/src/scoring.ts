@@ -77,6 +77,8 @@ export const underdogBonus: TieBreakModule = (pick, actual) => {
 
 export const tieBreakModules = { firstGoalProximity, underdogBonus } as const;
 export type TieBreakName = keyof typeof tieBreakModules;
+/** Underdog first: it is binary and rare, so it would never matter after the near-continuous minute comparison. */
+export const DEFAULT_TIE_BREAKS: readonly TieBreakName[] = ["underdogBonus", "firstGoalProximity"];
 
 export interface LeaderboardInput<T> {
   item: T;

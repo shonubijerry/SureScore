@@ -36,6 +36,8 @@ function toRecord(row: {
 	homeScore: number | null
 	awayScore: number | null
 	isFinalResultOfficial: boolean
+	firstGoalMinute: number | null
+	underdog: string | null
 	freshness: string
 	lastRefreshedAt: Date
 }): SportsEventCacheRecord {
@@ -50,6 +52,8 @@ function toRecord(row: {
 		homeScore: row.homeScore,
 		awayScore: row.awayScore,
 		isFinalResultOfficial: row.isFinalResultOfficial,
+		firstGoalMinute: row.firstGoalMinute,
+		underdog: row.underdog as SportsEvent['underdog'],
 		freshness: row.freshness as CacheFreshness,
 		lastRefreshedAt: row.lastRefreshedAt.toISOString(),
 		lastUpdatedUtc: row.lastRefreshedAt.toISOString(),
@@ -78,6 +82,10 @@ export class PrismaSportsEventCacheStore implements SportsEventCacheStore {
 					homeScore: event.homeScore,
 					awayScore: event.awayScore,
 					isFinalResultOfficial: event.isFinalResultOfficial,
+					// Odds disappear once a match starts and live feeds may omit goal
+					// details, so a missing value must never erase one already cached.
+					firstGoalMinute: event.firstGoalMinute ?? undefined,
+					underdog: event.underdog ?? undefined,
 					freshness: event.freshness,
 					lastRefreshedAt: new Date(event.lastRefreshedAt),
 				}

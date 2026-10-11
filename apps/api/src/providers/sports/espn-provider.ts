@@ -30,6 +30,19 @@ interface EspnCompetition {
 	date: string
 	status: { type: EspnStatusType }
 	competitors: EspnCompetitor[]
+	details?: EspnDetail[]
+	odds?: (EspnOdds | null)[]
+}
+
+interface EspnDetail {
+	scoringPlay?: boolean
+	shootout?: boolean
+	clock?: { value?: number }
+}
+
+type EspnPrice = { close?: { odds?: string }; open?: { odds?: string } }
+interface EspnOdds {
+	moneyline?: { home?: EspnPrice; away?: EspnPrice }
 }
 
 interface EspnEvent {
@@ -52,6 +65,26 @@ function toScore(value: string | undefined): number | null {
 	}
 	const parsed = Number(value)
 	return Number.isFinite(parsed) ? parsed : null
+}
+
+const REGULATION_SECONDS = 90 * 60
+
+/** Earliest regulation-time goal, rounded up to match ESPN's own minute display. */
+function toFirstGoalMinute(details: EspnDetail[] = []): number | null {
+	const seconds = details
+		.filter((d) => d.scoringPlay && !d.shootout && typeof d.clock?.value === 'number' && d.clock.value <= REGULATION_SECONDS)
+		.map((d) => d.clock?.value as number)
+	return seconds.length ? Math.max(1, Math.ceil(Math.min(...seconds) / 60)) : null
+}
+
+/** The side with the longer American moneyline price is the underdog; level prices have none. */
+function toUnderdog(odds: (EspnOdds | null)[] = []): 'home' | 'away' | null {
+	const moneyline = odds.find((o) => o?.moneyline)?.moneyline
+	const price = (side?: EspnPrice) => Number(side?.close?.odds ?? side?.open?.odds)
+	const home = price(moneyline?.home)
+	const away = price(moneyline?.away)
+	if (!Number.isFinite(home) || !Number.isFinite(away) || home === away) return null
+	return home > away ? 'home' : 'away'
 }
 
 function toUtcDate(value: string | undefined, fallback: Date): Date {
@@ -87,6 +120,8 @@ function normalizeEvent(league: string, event: EspnEvent): SportsEvent {
 		// and are never folded into this field, so "finished" here is always the
 		// regulation-time result.
 		isFinalResultOfficial: status === 'full time',
+		firstGoalMinute: toFirstGoalMinute(competition?.details),
+		underdog: toUnderdog(competition?.odds),
 		lastUpdatedUtc: new Date().toISOString(),
 	}
 }

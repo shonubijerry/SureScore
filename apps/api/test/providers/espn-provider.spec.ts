@@ -100,4 +100,26 @@ describe("EspnSportsProvider", () => {
 
     expect(live).toHaveLength(0);
   });
+
+  it("derives the first regulation goal minute and the moneyline underdog", async () => {
+    const event = structuredClone(scheduledEvent) as any;
+    event.competitions[0].details = [
+      { scoringPlay: false, clock: { value: 60 } },
+      { scoringPlay: true, clock: { value: 2700 } },
+      { scoringPlay: true, clock: { value: 1018 } },
+      { scoringPlay: true, shootout: true, clock: { value: 10 } },
+      { scoringPlay: true, clock: { value: 6000 } },
+    ];
+    event.competitions[0].odds = [{ moneyline: { home: { close: { odds: "+215" } }, away: { close: { odds: "-130" } } } }];
+    const provider = new EspnSportsProvider({ fetchImpl: vi.fn().mockImplementation(async () => scoreboardResponse([event])) });
+
+    const [normalized] = await provider.getFixtures({ from: "2026-09-27", to: "2026-09-27" });
+    expect(normalized).toMatchObject({ firstGoalMinute: 17, underdog: "home" });
+  });
+
+  it("leaves tie-break inputs null when ESPN has no goals or odds", async () => {
+    const provider = new EspnSportsProvider({ fetchImpl: vi.fn().mockImplementation(async () => scoreboardResponse([scheduledEvent])) });
+    const [normalized] = await provider.getFixtures({ from: "2026-09-27", to: "2026-09-27" });
+    expect(normalized).toMatchObject({ firstGoalMinute: null, underdog: null });
+  });
 });

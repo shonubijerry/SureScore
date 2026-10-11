@@ -13,7 +13,8 @@
   },
   "scripts": {
     "build": "prisma generate && tsc -p tsconfig.json",
-    "generate": "prisma generate"
+    "generate": "prisma generate",
+    "migration": "bash ./scripts/new-migration.sh"
   },
   "dependencies": {
     "@prisma/adapter-d1": "6.19.3",

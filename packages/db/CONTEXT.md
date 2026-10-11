@@ -13,7 +13,7 @@
 ## Core models
 - User: account identity, country, auth metadata, payout accounts relation
 - PayoutAccount: user payout details tied to country and provider
-- Prediction: placeholder model for prediction-related persistence, not yet deeply implemented
+- Prediction / PredictionEdit: one prediction per user per pot, with append-only edit history
 - SportsEventCache: normalized/cached sports events (id `"{provider}:{externalId}"`), match status, scores, freshness ("live"/"cached"/"stale"), and last refresh timestamp — the only sports data table the rest of the app reads from
 
 ## Important rules
@@ -24,6 +24,9 @@
 ## Commands
 - pnpm --filter @surescore/db generate
 - pnpm --filter @surescore/db build
+- pnpm --filter @surescore/db migration <name>: write SQL for schema changes as the next prisma/migrations/NNNN_name (uses a throwaway shadow DB; no database file needed)
+- pnpm --filter @surescore/api db:migrate:local: apply migrations to the local Miniflare D1 (recreated from scratch if `apps/api/.wrangler/state` is deleted)
+- pnpm --filter @surescore/api db:migrate:remote: apply migrations to Cloudflare D1
 
 ## Notes
 - This package is for durable, relational data only.

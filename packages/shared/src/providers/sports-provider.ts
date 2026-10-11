@@ -22,6 +22,10 @@ export interface SportsEvent {
   awayScore: number | null;
   /** True once the regulation-time result is official and safe to settle on. */
   isFinalResultOfficial: boolean;
+  /** Minute of the first regulation-time goal; null until a goal is scored. */
+  firstGoalMinute?: number | null;
+  /** Pre-match underdog derived from the moneyline; null when odds are unavailable or level. */
+  underdog?: "home" | "away" | null;
   lastUpdatedUtc: string;
 }
 
