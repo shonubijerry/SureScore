@@ -20,7 +20,7 @@ export interface PaymentProviderConfig {
 export interface SportsProviderConfig {
   id: string;
   name: string;
-  leagues: string[];
+  leagues?: string[];
 }
 
 export const countryConfigs: CountryConfig[] = [
@@ -46,12 +46,25 @@ export const sportsProviderConfigs: SportsProviderConfig[] = [
   {
     id: "espn",
     name: "ESPN Soccer Scoreboard",
-    leagues: ["eng.1", "esp.1", "uefa.champions", "fifa.world"],
+    leagues: [
+      "eng.1",
+      "esp.1",
+      "ger.1",
+      "ita.1",
+      "fra.1",
+      "uefa.champions",
+      "uefa.europa",
+      "uefa.europa.conf",
+    ],
   },
 ];
 
-export function getCountryConfig(countryCode: string): CountryConfig | undefined {
-  return countryConfigs.find((country) => country.code === countryCode.toUpperCase());
+export function getCountryConfig(
+  countryCode: string,
+): CountryConfig | undefined {
+  return countryConfigs.find(
+    (country) => country.code === countryCode.toUpperCase(),
+  );
 }
 
 export function isCountrySupported(countryCode: string): boolean {
@@ -62,34 +75,46 @@ export function listSupportedCountries(): CountryConfig[] {
   return countryConfigs.filter((country) => country.isLaunched);
 }
 
-export function getPaymentProviderConfig(providerId: string): PaymentProviderConfig | undefined {
+export function getPaymentProviderConfig(
+  providerId: string,
+): PaymentProviderConfig | undefined {
   return paymentProviderConfigs.find((provider) => provider.id === providerId);
 }
 
-export function getSportsProviderConfig(providerId: string): SportsProviderConfig | undefined {
+export function getSportsProviderConfig(
+  providerId: string,
+): SportsProviderConfig | undefined {
   return sportsProviderConfigs.find((provider) => provider.id === providerId);
 }
 
-export function resolvePaymentProviderForCountry(countryCode: string): PaymentProviderConfig {
+export function resolvePaymentProviderForCountry(
+  countryCode: string,
+): PaymentProviderConfig {
   const country = getCountryConfig(countryCode);
   if (!country) {
     throw new Error(`No country config for "${countryCode}"`);
   }
   const provider = getPaymentProviderConfig(country.paymentProviderId);
   if (!provider) {
-    throw new Error(`No payment provider config for "${country.paymentProviderId}"`);
+    throw new Error(
+      `No payment provider config for "${country.paymentProviderId}"`,
+    );
   }
   return provider;
 }
 
-export function resolveSportsProviderForCountry(countryCode: string): SportsProviderConfig {
+export function resolveSportsProviderForCountry(
+  countryCode: string,
+): SportsProviderConfig {
   const country = getCountryConfig(countryCode);
   if (!country) {
     throw new Error(`No country config for "${countryCode}"`);
   }
   const provider = getSportsProviderConfig(country.sportsProviderId);
   if (!provider) {
-    throw new Error(`No sports provider config for "${country.sportsProviderId}"`);
+    throw new Error(
+      `No sports provider config for "${country.sportsProviderId}"`,
+    );
   }
   return provider;
 }

@@ -13,7 +13,7 @@ const IncomingRequest = Request<unknown, IncomingRequestCfProperties>;
 
 describe("SureScore API worker", () => {
 	it("returns the monorepo health payload when the D1 binding is available", async () => {
-		const request = new IncomingRequest("http://example.com");
+		const request = new IncomingRequest("http://example.com/api/health");
 		// Create an empty context to pass to `worker.fetch()`.
 		const ctx = createExecutionContext();
 		const response = await worker.fetch(request, env, ctx);
@@ -25,12 +25,12 @@ describe("SureScore API worker", () => {
 			service: "api",
 			status: "ok",
 			binding: "DB",
-			database: "Cloudflare D1 + Prisma (no engine)",
+			database: "Cloudflare D1 + Prisma (wasm engine)",
 		});
 	});
 
 	it("returns setup guidance when the D1 binding is missing", async () => {
-		const request = new IncomingRequest("http://example.com");
+		const request = new IncomingRequest("http://example.com/api/health");
 		const ctx = createExecutionContext();
 		const response = await worker.fetch(request, {} as never, ctx);
 
@@ -45,13 +45,13 @@ describe("SureScore API worker", () => {
 	});
 
 	it("returns the same health payload through the worker runtime", async () => {
-		const response = await SELF.fetch("https://example.com");
+		const response = await SELF.fetch("https://example.com/api/health");
 		expect(await response.json()).toMatchObject({
 			app: "SureScore",
 			service: "api",
 			status: "ok",
 			binding: "DB",
-			database: "Cloudflare D1 + Prisma (no engine)",
+			database: "Cloudflare D1 + Prisma (wasm engine)",
 		});
 	});
 

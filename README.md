@@ -5,7 +5,7 @@ SureScore is now scaffolded as a minimal pnpm-workspaces monorepo with:
 - `apps/ui` — React + Vite frontend ready to deploy to Cloudflare Pages
 - `apps/api` — Cloudflare Worker API
 - `packages/shared` — shared UI/API metadata and types
-- `packages/db` — Prisma + Cloudflare D1 database package using the no-engine client
+- `packages/db` — Prisma + Cloudflare D1 database package using the wasm-engine client
 
 ## Getting started
 

@@ -3,7 +3,7 @@
 // types; provider-specific response shapes (ESPN scoreboard JSON, etc.) must
 // stay inside the adapter that implements this interface.
 
-export type MatchStatus = "scheduled" | "live" | "finished" | "postponed" | "abandoned";
+export type MatchStatus = "scheduled" | "first half" | "half time" | "second half" | "full time" | "postponed" | "abandoned";
 
 /**
  * Normalized internal sports event. Scores always reflect 90 minutes of
@@ -39,7 +39,7 @@ export interface FixturesQuery {
 
 export interface SportsProvider {
   readonly id: string;
-  getFixtures(league: string, query?: FixturesQuery): Promise<SportsEvent[]>;
+  getFixtures(query?: FixturesQuery): Promise<SportsEvent[]>;
   getLiveScores(league: string): Promise<SportsEvent[]>;
   getKickoffTime(eventId: string): Promise<string>;
   getStatus(eventId: string): Promise<MatchStatus>;

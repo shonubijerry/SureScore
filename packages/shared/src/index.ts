@@ -13,7 +13,7 @@ export const services = [
   },
   {
     name: "Database",
-    runtime: "Prisma ORM (no engine)",
+    runtime: "Prisma ORM (wasm engine)",
     deployment: "Cloudflare D1",
   },
 ] as const;

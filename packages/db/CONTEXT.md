@@ -14,6 +14,7 @@
 - User: account identity, country, auth metadata, payout accounts relation
 - PayoutAccount: user payout details tied to country and provider
 - Prediction: placeholder model for prediction-related persistence, not yet deeply implemented
+- SportsEventCache: normalized/cached sports events (id `"{provider}:{externalId}"`), match status, scores, freshness ("live"/"cached"/"stale"), and last refresh timestamp — the only sports data table the rest of the app reads from
 
 ## Important rules
 - Run Prisma generation after schema changes

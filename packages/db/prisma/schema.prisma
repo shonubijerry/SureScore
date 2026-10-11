@@ -1,11 +1,11 @@
 generator client {
-  provider   = "prisma-client-js"
-  engineType = "client"
-  output     = "../generated/client"
+  provider = "prisma-client-js"
+  output   = "../generated/client"
 }
 
 datasource db {
   provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model Prediction {
@@ -53,3 +53,30 @@ model PayoutAccount {
 
   @@index([userId])
 }
+
+// Normalized, cached sports events (see @surescore/shared SportsEvent). This
+// table is the only view of match data the rest of the app should read from;
+// provider-specific responses (ESPN, etc.) never reach it directly.
+model SportsEventCache {
+  id                    String   @id // "{provider}:{externalId}"
+  provider              String
+  externalId            String
+  league                String
+  homeTeam              String
+  awayTeam              String
+  kickoffTimeUtc        DateTime
+  status                String // scheduled | live | finished | postponed | abandoned
+  homeScore             Int?
+  awayScore             Int?
+  isFinalResultOfficial Boolean  @default(false)
+  freshness             String   @default("cached") // live | cached | stale
+  lastRefreshedAt       DateTime
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([provider, externalId])
+  @@index([league])
+  @@index([status])
+  @@index([kickoffTimeUtc])
+}
+

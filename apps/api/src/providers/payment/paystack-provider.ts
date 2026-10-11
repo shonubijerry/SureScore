@@ -62,7 +62,9 @@ export class PaystackProvider implements PaymentProvider {
   constructor(config: PaystackProviderConfig) {
     this.secretKey = config.secretKey;
     this.baseUrl = config.baseUrl ?? "https://api.paystack.co";
-    this.fetchImpl = config.fetchImpl ?? fetch;
+    // Bind to globalThis: workerd's fetch requires its original `this`, which
+    // an unbound function reference loses ("Illegal invocation").
+    this.fetchImpl = config.fetchImpl ?? fetch.bind(globalThis);
   }
 
   private async request<T>(path: string, init: RequestInit): Promise<PaystackApiResponse<T>> {

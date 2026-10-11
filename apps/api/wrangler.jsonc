@@ -22,5 +22,11 @@
 			"binding": "SESSIONS",
 			"id": "__CLOUDFLARE_KV_SESSIONS_ID__"
 		}
-	]
+	],
+	"triggers": {
+		"crons": [
+			"0 */4 * * *",
+			"*/10 * * * *"
+		]
+	}
 }

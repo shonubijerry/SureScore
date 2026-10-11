@@ -47,13 +47,23 @@ describe("EspnSportsProvider", () => {
     assertImplementsSportsProviderContract(provider);
   });
 
-  it("normalizes ESPN scoreboard events into the internal SportsEvent schema", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(scoreboardResponse([scheduledEvent]));
+  it("requests future schedule dates and normalizes events into the internal SportsEvent schema", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(scoreboardResponse([scheduledEvent]))
+      .mockResolvedValueOnce(scoreboardResponse([]));
     const provider = new EspnSportsProvider({ fetchImpl });
 
-    const fixtures = await provider.getFixtures("eng.1");
+    const fixtures = await provider.getFixtures({
+      from: "2026-09-27T00:00:00Z",
+      to: "2026-09-28T23:59:59Z",
+    });
 
     expect(fixtures).toHaveLength(1);
+    expect(fetchImpl.mock.calls).toEqual([
+      ["https://site.web.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard?dates=20260927"],
+      ["https://site.web.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard?dates=20260928"],
+    ]);
     assertSportsEventShape(fixtures[0]);
     expect(fixtures[0]).toMatchObject({
       id: "evt_2",

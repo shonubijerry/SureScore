@@ -19,6 +19,7 @@
 - auth/: signup, login, logout, me
 - config/: countries, payment providers, sports providers
 - payout-accounts/: list, create, update, delete
+- sports/: matches/upcoming, matches/live, matches/:id (read-only, backed by the sports event cache)
 - Keep one endpoint per file and mount nested routers from each index.ts
 
 ## Provider adapters
@@ -27,6 +28,14 @@
 - src/providers/registry.ts: `createProviderRegistry(env)` builds a `ProviderRegistry` with all adapters registered; backend services should resolve adapters via `registry.resolvePaymentProviderForCountry(countryCode)` / `resolveSportsProviderForCountry(countryCode)` instead of importing Paystack/ESPN classes directly
 - Needs `PAYSTACK_SECRET_KEY` env var (same pattern as `AUTH_SECRET`) — set in apps/api/.dev.vars locally, `wrangler secret put PAYSTACK_SECRET_KEY` in prod
 - test/providers/*.contract.ts: reusable contract assertions; adapter specs (paystack-provider.spec.ts, espn-provider.spec.ts) run their adapter through these plus provider-registry.spec.ts covers resolution/error behavior
+
+## Sports data ingestion and cache
+- src/lib/sports-cache-repository.ts: `SportsEventCacheStore` interface (store-agnostic) + `PrismaSportsEventCacheStore` adapter over the `SportsEventCache` D1 table; cache row id is `"{provider}:{externalId}"`
+- src/lib/sports-ingestion.ts: `prefetchFixtures`/`refreshLiveScores` (pure functions over `SportsProvider` + `SportsEventCacheStore`, so they're unit-testable with fakes, no Prisma import); a failed league fetch is caught and skipped so prior cached rows for that league are left untouched (fallback behavior); `invalidateStaleEvents` recomputes and persists freshness for every row
+- `@surescore/shared`'s `computeFreshness`/`CacheFreshness` marks rows "live" (recently refreshed live match), "cached" (recently refreshed fixture, or any finished/abandoned result), or "stale" (aged past the job cadence tolerance)
+- src/index.ts `scheduled()` dispatches on `controller.cron`: `"0 */4 * * *"` runs fixture prefetch, `"*/10 * * * *"` runs live score refresh + stale invalidation (crons declared in wrangler.jsonc `triggers.crons`)
+- League mapping comes from `@surescore/shared`'s `sportsProviderConfigs[].leagues`, never hardcoded at the call site
+- test/sports/*.spec.ts: `cache-freshness.spec.ts` covers the freshness policy, `sports-ingestion.spec.ts` covers prefetch/live-refresh/invalidate against fake provider + store (provider outage fallback, freshness marking)
 
 ## Product rules enforced here
 - Country and provider selection are configuration-driven, not hardcoded
