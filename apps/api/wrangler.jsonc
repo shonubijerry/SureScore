@@ -23,6 +23,20 @@
 			"id": "__CLOUDFLARE_KV_SESSIONS_ID__"
 		}
 	],
+	"queues": {
+		"producers": [
+			{ "binding": "TRANSFER_QUEUE", "queue": "surescore-transfers" }
+		],
+		"consumers": [
+			{
+				"queue": "surescore-transfers",
+				"max_batch_size": 10,
+				"max_batch_timeout": 5,
+				"max_retries": 5,
+				"dead_letter_queue": "surescore-transfers-dlq"
+			}
+		]
+	},
 	"triggers": {
 		"crons": [
 			"0 */4 * * *",

@@ -30,6 +30,7 @@ model User {
   updatedAt    DateTime @updatedAt
 
   payoutAccounts PayoutAccount[]
+  ledgerEntries  LedgerEntry[]
 
   @@index([countryCode])
 }
@@ -80,3 +81,29 @@ model SportsEventCache {
   @@index([kickoffTimeUtc])
 }
 
+
+// Append-only financial ledger. Rows are never updated or deleted: every
+// state change of a fund/refund/payout is a new row. `entryKey` makes writes
+// idempotent (a redelivered queue message cannot create a duplicate row).
+model LedgerEntry {
+  id               String   @id @default(cuid())
+  entryKey         String   @unique // "{idempotencyKey}:{attempt}"
+  idempotencyKey   String // groups all attempts of one financial action
+  type             String // fund | refund | payout
+  status           String // pending | successful | failed
+  userId           String
+  potId            String
+  countryCode      String
+  currency         String
+  amountMinorUnits Int
+  provider         String
+  reference        String?
+  detail           String?
+  createdAt        DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([idempotencyKey])
+  @@index([userId, createdAt])
+  @@index([potId])
+}

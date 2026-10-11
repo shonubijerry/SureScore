@@ -1,6 +1,7 @@
 import app from "./router.js";
 import { createProviderRegistry } from "./providers/registry.js";
 import { PrismaSportsEventCacheStore } from "./lib/sports-cache-repository.js";
+import { handleTransferBatch, type TransferJob } from "./lib/transfer-queue.js";
 import { invalidateStaleEvents, prefetchFixtures, refreshLiveScores } from "./lib/sports-ingestion.js";
 
 // Cron patterns from wrangler.jsonc "triggers.crons".
@@ -10,6 +11,10 @@ const LIVE_SCORE_REFRESH_CRON = "*/10 * * * *";
 export default {
 	fetch(request: Request, env: Env, ctx: ExecutionContext) {
 		return app.fetch(request, env, ctx);
+	},
+
+	queue(batch: MessageBatch<TransferJob>, env: Env) {
+		return handleTransferBatch(batch, env);
 	},
 
 	async scheduled(controller: ScheduledController, env: Env) {
