@@ -34,6 +34,8 @@ export async function handleTransferBatch(
 	deps: {
 		resolveProvider?: (countryCode: string) => PaymentProvider;
 		ledger?: LedgerStore;
+		/** Called once a refund is confirmed successful by the provider. */
+		onRefunded?: (potId: string) => Promise<unknown>;
 	} = {},
 ) {
 	const registry = createProviderRegistry(env);
@@ -66,6 +68,9 @@ export async function handleTransferBatch(
 			try {
 				const result = await executeTransfer(provider, body);
 				await ledger.append({ ...entry, status: result.status, provider: result.provider, reference: result.reference });
+				if (result.status === "successful" && body.type === "refund") {
+					await deps.onRefunded?.(request.potId);
+				}
 				result.status === "failed" ? retry() : message.ack();
 			} catch (error) {
 				await ledger.append({ ...entry, status: "failed", provider: provider.id, detail: String(error) });

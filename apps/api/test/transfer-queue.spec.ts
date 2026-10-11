@@ -14,8 +14,8 @@ const makeLedger = (inFlight = false) => ({
 	append: vi.fn().mockResolvedValue(undefined),
 	isInFlightOrDone: vi.fn().mockResolvedValue(inFlight),
 });
-const run = (messages: ReturnType<typeof makeMessage>[], provider: object, ledger = makeLedger()) =>
-	handleTransferBatch({ messages } as never, {} as Env, { resolveProvider: () => provider as never, ledger });
+const run = (messages: ReturnType<typeof makeMessage>[], provider: object, ledger = makeLedger(), onRefunded?: (id: string) => Promise<unknown>) =>
+	handleTransferBatch({ messages } as never, {} as Env, { resolveProvider: () => provider as never, ledger, onRefunded });
 
 describe("transfer queue consumer", () => {
 	it("acks successful and pending transfers", async () => {
@@ -31,6 +31,15 @@ describe("transfer queue consumer", () => {
 		await run([m], { refund });
 		expect(refund).toHaveBeenCalledOnce();
 		expect(m.ack).toHaveBeenCalled();
+	});
+
+	it("marks the pot refunded only after a successful refund", async () => {
+		const onRefunded = vi.fn().mockResolvedValue(true);
+		const body = { type: "refund", request: { ...payoutJob.request, reason: "cancelled" } } as never;
+		await run([makeMessage(body)], { refund: vi.fn().mockResolvedValue({ status: "pending" }) }, makeLedger(), onRefunded);
+		expect(onRefunded).not.toHaveBeenCalled();
+		await run([makeMessage(body)], { refund: vi.fn().mockResolvedValue({ status: "successful" }) }, makeLedger(), onRefunded);
+		expect(onRefunded).toHaveBeenCalledWith("p1");
 	});
 
 	it("retries with backoff on failed result or thrown error", async () => {

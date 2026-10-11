@@ -1,0 +1,24 @@
+import { z } from "zod";
+import { MAX_WINNER_COUNT, MIN_WINNER_COUNT, potStatuses } from "@surescore/shared";
+
+export const potSchema = z.object({
+	id: z.string(),
+	potterId: z.string(),
+	eventId: z.string(),
+	countryCode: z.string(),
+	currency: z.string(),
+	provider: z.string(),
+	prizeAmountMinorUnits: z.number().int(),
+	winnerCount: z.number().int().min(MIN_WINNER_COUNT).max(MAX_WINNER_COUNT),
+	status: z.enum(potStatuses),
+	fundingReference: z.string().nullable(),
+	shareCode: z.string().nullable(),
+	createdAt: z.iso.datetime(),
+	updatedAt: z.iso.datetime(),
+});
+
+export const potIdParams = z.object({ id: z.string() });
+
+export const potResponse = (description: string, status: "200" | "201" = "200") => ({
+	[status]: { description, content: { "application/json": { schema: z.object({ pot: potSchema }) } } },
+});

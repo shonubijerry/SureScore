@@ -22,6 +22,8 @@ export interface RefundRequest {
   currency: string;
   amountMinorUnits: number;
   reason: RefundReason;
+  /** Provider reference of the original funding payment being refunded. */
+  originalReference: string;
   idempotencyKey: string;
 }
 
@@ -56,6 +58,8 @@ export interface PaymentResult {
   status: PaymentStatus;
   amountMinorUnits: number;
   currency: string;
+  /** Where the payer completes a pending payment (fund only). */
+  checkoutUrl?: string;
 }
 
 export interface PaymentProvider {

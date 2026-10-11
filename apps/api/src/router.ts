@@ -6,6 +6,8 @@ import { appName, type HealthResponse } from '@surescore/shared'
 import { authRoutes } from './routes/auth/index.js'
 import { configRoutes } from './routes/config/index.js'
 import { payoutAccountRoutes } from './routes/payout-accounts/index.js'
+import { potRoutes } from './routes/pots/index.js'
+import { shareRoutes } from './routes/share/index.js'
 import { sportsRoutes } from './routes/sports/index.js'
 import { walletRoutes } from './routes/wallet/index.js'
 import type { AppEnv } from './types.js'
@@ -62,6 +64,8 @@ openapi.get('/api/health', (context) => context.json(healthResponse(context.env.
 openapi.route('/api/auth', authRoutes)
 openapi.route('/api/config', configRoutes)
 openapi.route('/api/payout-accounts', payoutAccountRoutes)
+openapi.route('/api/pots', potRoutes)
+openapi.route('/api/share', shareRoutes)
 openapi.route('/api/sports', sportsRoutes)
 openapi.route('/api/wallet', walletRoutes)
 

@@ -1,6 +1,7 @@
 import app from "./router.js";
 import { createProviderRegistry } from "./providers/registry.js";
 import { PrismaSportsEventCacheStore } from "./lib/sports-cache-repository.js";
+import { PotService } from "./lib/pot-service.js";
 import { handleTransferBatch, type TransferJob } from "./lib/transfer-queue.js";
 import { invalidateStaleEvents, prefetchFixtures, refreshLiveScores } from "./lib/sports-ingestion.js";
 
@@ -14,7 +15,9 @@ export default {
 	},
 
 	queue(batch: MessageBatch<TransferJob>, env: Env) {
-		return handleTransferBatch(batch, env);
+		return handleTransferBatch(batch, env, {
+			onRefunded: (potId) => new PotService(env).markRefunded(potId),
+		});
 	},
 
 	async scheduled(controller: ScheduledController, env: Env) {
@@ -41,6 +44,7 @@ export default {
 				console.warn("Live score refresh had provider failures, serving cached data:", result.failures);
 			}
 			await invalidateStaleEvents(store);
+			await new PotService(env).syncStatuses();
 			return;
 		}
 

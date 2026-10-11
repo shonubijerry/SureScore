@@ -30,6 +30,7 @@ interface PaystackTransactionData {
   status: string;
   amount: number;
   currency: string;
+  authorization_url?: string;
 }
 
 interface PaystackTransferData {
@@ -97,8 +98,9 @@ export class PaystackProvider implements PaymentProvider {
       provider: this.id,
       reference: data.reference,
       status: toInternalStatus(data.status),
-      amountMinorUnits: data.amount,
-      currency: data.currency,
+      amountMinorUnits: data.amount ?? request.amountMinorUnits,
+      currency: data.currency ?? request.currency,
+      ...(data.authorization_url && { checkoutUrl: data.authorization_url }),
     };
   }
 
@@ -106,7 +108,7 @@ export class PaystackProvider implements PaymentProvider {
     const { data } = await this.request<PaystackTransactionData>("/refund", {
       method: "POST",
       body: JSON.stringify({
-        transaction: request.idempotencyKey,
+        transaction: request.originalReference,
         amount: request.amountMinorUnits,
         currency: request.currency,
         merchant_note: request.reason,

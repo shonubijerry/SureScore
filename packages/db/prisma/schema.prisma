@@ -8,12 +8,39 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// One score prediction per user per pot (enforced by the unique index).
+// `firstGoalMinute` feeds the optional first-goal tie-break. Previous values
+// are kept in PredictionEdit whenever a pre-lock edit changes them.
 model Prediction {
-  id         String   @id @default(cuid())
-  homeTeam   String
-  awayTeam   String
-  kickoffAt  DateTime
-  createdAt  DateTime @default(now())
+  id              String   @id @default(cuid())
+  potId           String
+  userId          String
+  homeGoals       Int
+  awayGoals       Int
+  firstGoalMinute Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  pot   Pot                @relation(fields: [potId], references: [id])
+  user  User               @relation(fields: [userId], references: [id])
+  edits PredictionEdit[]
+
+  @@unique([potId, userId])
+  @@index([userId])
+}
+
+// Append-only edit history: the values a prediction had before each edit.
+model PredictionEdit {
+  id              String   @id @default(cuid())
+  predictionId    String
+  homeGoals       Int
+  awayGoals       Int
+  firstGoalMinute Int?
+  replacedAt      DateTime @default(now())
+
+  prediction Prediction @relation(fields: [predictionId], references: [id], onDelete: Cascade)
+
+  @@index([predictionId, replacedAt])
 }
 
 // Account identity. Country is fixed at signup and drives currency, provider,
@@ -31,6 +58,8 @@ model User {
 
   payoutAccounts PayoutAccount[]
   ledgerEntries  LedgerEntry[]
+  pots           Pot[]
+  predictions    Prediction[]
 
   @@index([countryCode])
 }
@@ -75,12 +104,13 @@ model SportsEventCache {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
+  pots Pot[]
+
   @@unique([provider, externalId])
   @@index([league])
   @@index([status])
   @@index([kickoffTimeUtc])
 }
-
 
 // Append-only financial ledger. Rows are never updated or deleted: every
 // state change of a fund/refund/payout is a new row. `entryKey` makes writes
@@ -106,4 +136,47 @@ model LedgerEntry {
   @@index([idempotencyKey])
   @@index([userId, createdAt])
   @@index([potId])
+}
+
+// A funded prediction pot tied to one match. Currency and payment provider are
+// copied from the potter's country config at creation and never change.
+model Pot {
+  id                    String   @id @default(cuid())
+  potterId              String
+  eventId               String
+  countryCode           String
+  currency              String
+  provider              String
+  prizeAmountMinorUnits Int
+  winnerCount           Int
+  status                String   @default("Draft")
+  fundingReference      String?
+  shareCode             String?  @unique // set only once funding succeeds
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  potter      User                 @relation(fields: [potterId], references: [id])
+  event       SportsEventCache     @relation(fields: [eventId], references: [id])
+  transitions PotStateTransition[]
+  predictions Prediction[]
+
+  @@index([potterId])
+  @@index([eventId])
+  @@index([status])
+}
+
+// Append-only audit trail: one row per pot state transition.
+model PotStateTransition {
+  id         String   @id @default(cuid())
+  potId      String
+  fromStatus String?
+  toStatus   String
+  actorType  String // user | system | admin
+  actorId    String?
+  reason     String
+  createdAt  DateTime @default(now())
+
+  pot Pot @relation(fields: [potId], references: [id])
+
+  @@index([potId, createdAt])
 }
