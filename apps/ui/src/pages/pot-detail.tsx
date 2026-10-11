@@ -1,0 +1,160 @@
+import { useParams } from 'react-router-dom'
+import { Card, CardContent } from '@/components/ui/card'
+import { Breakdown, Leaderboard as LeaderboardList } from '../components/leaderboard'
+import { Empty, ErrorNote, Loading, Section, SignInPrompt } from '../components/bits'
+import { MatchHeader } from '../components/match-card'
+import { PredictionForm } from '../components/prediction-form'
+import { useAuth } from '../lib/auth'
+import { formatKickoff, formatMoney, isLocked } from '../lib/format'
+import type { Leaderboard, PotCard, PotSettlement, PredictionView } from '../lib/types'
+import { useApi } from '../lib/use-api'
+
+const LIVE_REFRESH_MS = 120_000
+const CLOSED_STATUSES = ['Cancelled', 'Refunded']
+
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="font-bold">{value}</dd>
+    </div>
+  )
+}
+
+function MyPrediction({ pot, canPredict }: { pot: PotCard; canPredict: boolean }) {
+  const { user } = useAuth()
+  const mine = useApi<PredictionView>(user ? `/api/pots/${pot.id}/predictions/me` : null, LIVE_REFRESH_MS)
+  const existing = mine.data?.prediction ?? null
+
+  if (!user) return canPredict ? <SignInPrompt>Sign in to make your prediction.</SignInPrompt> : null
+  if (mine.loading) return <Loading />
+  if (mine.error && mine.error.status !== 404) return <ErrorNote error={mine.error} onRetry={mine.reload} />
+
+  return (
+    <Section title={existing ? 'Your prediction' : 'Make your prediction'}>
+      <Card size="sm">
+        <CardContent className="space-y-3">
+          {canPredict ? (
+            <PredictionForm potId={pot.id} match={pot.match} existing={existing} onSaved={mine.reload} />
+          ) : existing ? (
+            <p className="text-lg font-bold">
+              {pot.match.homeTeam} {existing.homeGoals} – {existing.awayGoals} {pot.match.awayTeam}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">You didn't predict this pot.</p>
+          )}
+          {existing && mine.data?.breakdown && (
+            <div className="space-y-2">
+              <p className="text-sm font-semibold">
+                {mine.data.breakdown.total} points{mine.data.final ? '' : ' (provisional)'}
+              </p>
+              <Breakdown breakdown={mine.data.breakdown} />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </Section>
+  )
+}
+
+const TRANSFER_LABEL = { pending: 'In progress', successful: 'Completed', failed: 'Failed – will be retried' } as const
+
+/** Payout/refund progress; the server scopes it to the potter (all) or a player (own payout). */
+function Settlement({ pot }: { pot: PotCard }) {
+  const { user } = useAuth()
+  const query = useApi<PotSettlement>(user ? `/api/pots/${pot.id}/settlement` : null, LIVE_REFRESH_MS)
+  const transfers = query.data ? [...(query.data.refund ? [query.data.refund] : []), ...query.data.payouts] : []
+
+  if (!user || query.error || query.loading) return null
+  if (!transfers.length) {
+    return query.data?.potStatus === 'Cancelled' ? <Empty>Refund is being initiated.</Empty> : null
+  }
+
+  return (
+    <Section title="Payouts & refunds">
+      <Card size="sm">
+        <CardContent className="space-y-2">
+          {transfers.map((t) => (
+            <div key={`${t.type}:${t.userId}`} className="flex items-center justify-between gap-3 text-sm">
+              <span>
+                {t.type === 'refund' ? 'Refund to potter' : t.userId === user.id ? 'Your winnings' : (t.displayName ?? 'Winner')}
+              </span>
+              <span className="text-right">
+                <span className="font-bold">{formatMoney(t.amountMinorUnits, pot.currency)}</span>
+                <span className="block text-xs text-muted-foreground">{TRANSFER_LABEL[t.status]}</span>
+                {t.status === 'failed' && t.detail && t.userId === user.id && (
+                  <span className="block text-xs text-destructive">{t.detail}</span>
+                )}
+              </span>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </Section>
+  )
+}
+
+function Predictions({ pot, locked }: { pot: PotCard; locked: boolean }) {
+  const { user } = useAuth()
+  const board = useApi<Leaderboard>(locked && user ? `/api/pots/${pot.id}/leaderboard` : null, LIVE_REFRESH_MS)
+
+  return (
+    <Section title="Leaderboard">
+      {!locked ? (
+        <Empty>Predictions stay hidden until {formatKickoff(pot.predictionLocksAt)}, when the pot locks.</Empty>
+      ) : !user ? (
+        <SignInPrompt>Sign in to view the leaderboard.</SignInPrompt>
+      ) : board.loading ? (
+        <Loading />
+      ) : board.error ? (
+        <ErrorNote error={board.error} onRetry={board.reload} />
+      ) : !board.data?.entries.length ? (
+        <Empty>No predictions were made.</Empty>
+      ) : (
+        <>
+          {!board.data.final && <p className="text-xs text-muted-foreground">Provisional ranking until the result is official.</p>}
+          <LeaderboardList entries={board.data.entries} winnerCount={pot.winnerCount} myUserId={user.id} />
+        </>
+      )}
+    </Section>
+  )
+}
+
+export default function PotDetailPage() {
+  const { id = '' } = useParams()
+  const { user } = useAuth()
+  const query = useApi<{ pot: PotCard }>(`/api/discover/pots/${id}`, LIVE_REFRESH_MS)
+
+  if (query.loading) return <Loading />
+  if (query.error || !query.data) return <ErrorNote error={query.error ?? new Error('Pot not found.')} onRetry={query.reload} />
+
+  const { pot } = query.data
+  const locked = isLocked(pot.predictionLocksAt)
+  const closed = CLOSED_STATUSES.includes(pot.status)
+  const canPredict = pot.status === 'Open' && !locked && user?.countryCode === pot.countryCode
+
+  return (
+    <>
+      <Card>
+        <CardContent className="space-y-4">
+          <MatchHeader match={pot.match} large />
+          <dl className="grid grid-cols-2 gap-4 border-t border-border pt-4 sm:grid-cols-4">
+            <Fact label="Prize" value={formatMoney(pot.prizeAmountMinorUnits, pot.currency)} />
+            <Fact label="Winners" value={String(pot.winnerCount)} />
+            <Fact label="Players" value={String(pot.predictionCount)} />
+            <Fact label="Pot status" value={pot.status} />
+          </dl>
+          {!locked && !closed && <p className="text-xs text-muted-foreground">Predictions lock {formatKickoff(pot.predictionLocksAt)}.</p>}
+          {closed && <p className="text-sm text-destructive">This pot was cancelled. Any stake is refunded.</p>}
+        </CardContent>
+      </Card>
+
+      {user && pot.status === 'Open' && !locked && user.countryCode !== pot.countryCode && (
+        <Empty>This pot pays out in {pot.currency} and is only open to players in {pot.countryCode}.</Empty>
+      )}
+      {!closed && <MyPrediction pot={pot} canPredict={canPredict} />}
+      {!closed && <Predictions pot={pot} locked={locked} />}
+      <Settlement pot={pot} />
+    </>
+  )
+}

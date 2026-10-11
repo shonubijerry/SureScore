@@ -37,6 +37,13 @@
 - League mapping comes from `@surescore/shared`'s `sportsProviderConfigs[].leagues`, never hardcoded at the call site
 - test/sports/*.spec.ts: `cache-freshness.spec.ts` covers the freshness policy, `sports-ingestion.spec.ts` covers prefetch/live-refresh/invalidate against fake provider + store (provider outage fallback, freshness marking)
 
+## Settlement, refunds and payouts (Epic 9)
+- `@surescore/shared` settlement.ts: `regulationOutcome` (settles only on an official "full time" result, so extra time/penalties never count), `splitPrizePool` (90% winner pool / 10% fee), `distributePrizes` (50/30/20; 100 for 1 winner, 60/40 for 2; fewer players than slots uses the split for the player count; ties merge slots and split equally, leftover minor units go to the earliest tied entries so payouts sum exactly to the pool)
+- src/lib/settlement-service.ts: `settleAll()` runs on the 10-minute cron after `syncStatuses` and settles pots in "Settling": ranks persisted predictions, enqueues payouts (key `payout:{potId}:{userId}`) and moves the pot to Paid. Re-runs are safe (compare-and-set transition + ledger check in the queue consumer). A pot with no predictions is cancelled and refunded; a winner without a payout account gets a failed ledger row for admin retry
+- Refunds for postponed/abandoned matches are initiated by `PotService.cancel` (via `syncStatuses`) through the transfer queue
+- `GET /pots/:id/settlement` returns latest payout/refund status from the ledger (potter: all payouts + refund; player: own payout)
+- Signup never accepts a country: it is taken from `request.cf.country` and falls back to Nigeria (`resolveSignupCountry`)
+
 ## Product rules enforced here
 - Country and provider selection are configuration-driven, not hardcoded
 - User payout details must exist before a first prediction is allowed

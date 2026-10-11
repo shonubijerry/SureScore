@@ -28,7 +28,7 @@ const allowedTransitions: Record<PotStatus, readonly PotStatus[]> = {
   Open: ["Locked", "Cancelled"],
   Locked: ["Live", "Cancelled"],
   Live: ["Settling", "Cancelled"],
-  Settling: ["Paid", "Disputed"],
+  Settling: ["Paid", "Disputed", "Cancelled"], // Cancelled: no predictions, so the pot is refunded
   Paid: ["Disputed"],
   Cancelled: ["Refunded"],
   Refunded: [],

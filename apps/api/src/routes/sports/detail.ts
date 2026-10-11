@@ -1,7 +1,7 @@
 import { OpenAPIRoute, contentJson, NotFoundException } from "chanfana";
 import { z } from "zod";
-import { computeFreshness } from "@surescore/shared";
 import { PrismaSportsEventCacheStore } from "../../lib/sports-cache-repository.js";
+import { matchView } from "../../lib/views.js";
 import type { AppContext } from "../../types.js";
 import { sportsEventSchema } from "./schema.js";
 
@@ -32,12 +32,6 @@ export class GetMatchDetailEndpoint extends OpenAPIRoute {
 			throw new NotFoundException(`No match found for id "${params.id}"`);
 		}
 
-		const now = new Date();
-		const match = {
-			...record,
-			freshness: computeFreshness(record.status, record.lastRefreshedAt, now),
-		};
-
-		return c.json({ match });
+		return c.json({ match: matchView(record) });
 	}
 }

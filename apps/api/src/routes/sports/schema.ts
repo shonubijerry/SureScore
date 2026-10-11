@@ -1,13 +1,15 @@
 import { z } from "zod";
+import { matchStatuses } from "@surescore/shared";
 
 export const sportsEventSchema = z.object({
 	id: z.string(),
+	cacheId: z.string().describe("Id to use when creating pots and fetching match detail"),
 	provider: z.string(),
 	league: z.string(),
 	homeTeam: z.string(),
 	awayTeam: z.string(),
 	kickoffTimeUtc: z.string(),
-	status: z.enum(["scheduled", "first half", "second half", "half time", "finished", "postponed", "abandoned"]),
+	status: z.enum(matchStatuses),
 	homeScore: z.number().nullable(),
 	awayScore: z.number().nullable(),
 	isFinalResultOfficial: z.boolean(),

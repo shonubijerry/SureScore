@@ -3,7 +3,7 @@
 // recently a row was refreshed, using the ingestion job cadences as the
 // tolerance window before data is considered stale.
 
-import type { MatchStatus } from "./sports-provider.js";
+import { liveMatchStatuses, type MatchStatus } from "./sports-provider.js";
 
 export type CacheFreshness = "live" | "cached" | "stale";
 
@@ -25,7 +25,7 @@ function isTerminalStatus(status: MatchStatus): boolean {
 }
 
 function isLiveStatus(status: MatchStatus): boolean {
-  return ['first half', 'second half', 'half time'].includes(status);
+  return liveMatchStatuses.includes(status);
 }
 
 export function computeFreshness(

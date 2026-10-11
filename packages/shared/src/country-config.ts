@@ -67,6 +67,14 @@ export function getCountryConfig(
   );
 }
 
+export const DEFAULT_COUNTRY_CODE = "NG";
+
+/** Launched country for a request-detected code, falling back to the default market. */
+export function resolveSignupCountry(detectedCode?: string | null): CountryConfig {
+  const detected = detectedCode ? getCountryConfig(detectedCode) : undefined;
+  return detected?.isLaunched ? detected : getCountryConfig(DEFAULT_COUNTRY_CODE)!;
+}
+
 export function isCountrySupported(countryCode: string): boolean {
   return getCountryConfig(countryCode)?.isLaunched === true;
 }

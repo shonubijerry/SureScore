@@ -1,7 +1,7 @@
 import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
-import { computeFreshness } from "@surescore/shared";
 import { PrismaSportsEventCacheStore } from "../../lib/sports-cache-repository.js";
+import { matchView } from "../../lib/views.js";
 import type { AppContext } from "../../types.js";
 import { sportsEventSchema } from "./schema.js";
 
@@ -27,12 +27,6 @@ export class ListUpcomingMatchesEndpoint extends OpenAPIRoute {
 		const store = new PrismaSportsEventCacheStore(c.env.DB);
 		const records = await store.listUpcoming(query.league);
 		const now = new Date();
-
-		const matches = records.map((record) => ({
-			...record,
-			freshness: computeFreshness(record.status, record.lastRefreshedAt, now),
-		}));
-
-		return c.json({ matches });
+		return c.json({ matches: records.map((record) => matchView(record, now)) });
 	}
 }

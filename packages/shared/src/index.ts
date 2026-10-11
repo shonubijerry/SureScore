@@ -32,3 +32,4 @@ export * from "./eligibility.js";
 export * from "./providers/index.js";
 export * from "./pot-rules.js";
 export * from "./scoring.js";
+export * from "./settlement.js";

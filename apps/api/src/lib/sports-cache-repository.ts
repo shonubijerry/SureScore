@@ -24,7 +24,7 @@ function cacheId(record: Pick<SportsEventCacheRecord, 'provider' | 'id'>): strin
 	return `${record.provider}:${record.id}`
 }
 
-function toRecord(row: {
+export function toRecord(row: {
 	id: string
 	provider: string
 	externalId: string

@@ -149,7 +149,8 @@ export class PotService {
 			});
 		} catch (error) {
 			await this.cancel(pot, SYSTEM_ACTOR, "cancelled");
-			throw error;
+			console.error("Pot funding initialization failed:", error);
+			throw new HTTPException(502, { message: "Payment provider is unavailable. Please try again later." });
 		}
 
 		const withReference = { ...pot, fundingReference: result.reference };

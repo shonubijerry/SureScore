@@ -1,10 +1,9 @@
 import { OpenAPIRoute, ConflictException, contentJson } from "chanfana";
 import { z } from "zod";
 import { createDbClient } from "@surescore/db";
-import { getCountryConfig } from "@surescore/shared";
+import { resolveSignupCountry } from "@surescore/shared";
 import { hashPassword } from "../../lib/password.js";
 import { createSession } from "../../lib/auth.js";
-import { errorResponse } from "../../lib/openapi.js";
 import type { AppContext } from "../../types.js";
 
 const userResponseSchema = z.object({
@@ -24,7 +23,6 @@ export class SignupEndpoint extends OpenAPIRoute {
 				z.object({
 					email: z.email(),
 					password: z.string().min(8),
-					countryCode: z.string().length(2).describe("ISO 3166-1 alpha-2 country code"),
 					displayName: z.string().trim().min(1).optional(),
 				}),
 			),
@@ -36,7 +34,6 @@ export class SignupEndpoint extends OpenAPIRoute {
 					z.object({ token: z.string(), expiresAt: z.iso.datetime(), user: userResponseSchema }),
 				),
 			},
-			"400": errorResponse("Unsupported country"),
 			...ConflictException.schema(),
 		},
 	};
@@ -44,12 +41,8 @@ export class SignupEndpoint extends OpenAPIRoute {
 	async handle(c: AppContext) {
 		const { body } = await this.getValidatedData<typeof this.schema>();
 		const email = body.email.trim().toLowerCase();
-		const countryCode = body.countryCode.trim().toUpperCase();
-
-		const country = getCountryConfig(countryCode);
-		if (!country || !country.isLaunched) {
-			return c.json({ error: `Country "${countryCode}" is not currently supported.` }, 400);
-		}
+		// Country is never user-supplied: it comes from Cloudflare's edge geolocation.
+		const country = resolveSignupCountry(c.req.raw.cf?.country as string | undefined);
 
 		const db = createDbClient(c.env.DB);
 

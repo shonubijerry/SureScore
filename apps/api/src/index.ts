@@ -2,6 +2,7 @@ import app from "./router.js";
 import { createProviderRegistry } from "./providers/registry.js";
 import { PrismaSportsEventCacheStore } from "./lib/sports-cache-repository.js";
 import { PotService } from "./lib/pot-service.js";
+import { SettlementService } from "./lib/settlement-service.js";
 import { handleTransferBatch, type TransferJob } from "./lib/transfer-queue.js";
 import { invalidateStaleEvents, prefetchFixtures, refreshLiveScores } from "./lib/sports-ingestion.js";
 
@@ -44,7 +45,9 @@ export default {
 				console.warn("Live score refresh had provider failures, serving cached data:", result.failures);
 			}
 			await invalidateStaleEvents(store);
-			await new PotService(env).syncStatuses();
+			const pots = new PotService(env);
+			await pots.syncStatuses();
+			await new SettlementService(env, pots).settleAll();
 			return;
 		}
 

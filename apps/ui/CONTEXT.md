@@ -20,7 +20,10 @@
 - Treat the app as a consumer of API contracts rather than a home for business rules
 
 ## Important files
-- src/App.tsx
+- src/App.tsx (routes, lazy-loaded pages)
+- src/pages/* (home, pots, my-pots, matches, match-detail, pot-detail, create-pot, auth)
+- src/components/* (layout with mobile bottom nav, cards, leaderboard, prediction form)
+- src/lib/* (api client, useApi hook, auth context, formatters)
 - src/main.tsx
 - src/index.css
 - components/theme-provider.tsx
@@ -30,3 +33,5 @@
 - pnpm --filter @surescore/ui dev
 - pnpm --filter @surescore/ui build
 - pnpm --filter @surescore/ui lint
+
+Dev: the Vite server proxies /api to the Worker on :8787 (run `pnpm dev`); set VITE_API_URL for deployed builds.
