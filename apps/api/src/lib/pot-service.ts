@@ -22,7 +22,7 @@ import {
 } from "@surescore/shared";
 import { createProviderRegistry } from "../providers/registry.js";
 import { PrismaLedgerStore, type LedgerStore } from "./ledger.js";
-import { enqueueTransfer } from "./transfer-queue.js";
+import { enqueueTransfer, type TransferJob } from "./transfer-queue.js";
 
 export interface Actor {
 	type: "user" | "system" | "admin";
@@ -34,7 +34,7 @@ export const SYSTEM_ACTOR: Actor = { type: "system" };
 const ACTIVE_STATUSES: PotStatus[] = ["Draft", "Funded", "Open", "Locked", "Live"];
 const SHARE_CODE_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
 
-function fail(status: 400 | 403 | 404 | 409 | 422, message: string): never {
+export function fail(status: 400 | 403 | 404 | 409 | 422, message: string): never {
 	throw new HTTPException(status, { message });
 }
 
@@ -80,22 +80,24 @@ export class PotService {
 	/** Cancels a pot; anything already funded is refunded through the transfer queue. */
 	async cancel(pot: Pot, actor: Actor, reason: RefundReason) {
 		if (!(await this.transition(pot, "Cancelled", actor, reason))) return false;
-		if (pot.status !== "Draft") {
-			await enqueueTransfer(this.env, {
-				type: "refund",
-				request: {
-					potId: pot.id,
-					userId: pot.potterId,
-					countryCode: pot.countryCode,
-					currency: pot.currency,
-					amountMinorUnits: pot.prizeAmountMinorUnits,
-					reason,
-					originalReference: pot.fundingReference ?? "",
-					idempotencyKey: `refund:${pot.id}`,
-				},
-			});
-		}
+		if (pot.status !== "Draft") await enqueueTransfer(this.env, PotService.refundJob(pot, reason));
 		return true;
+	}
+
+	static refundJob(pot: Pot, reason: RefundReason): TransferJob {
+		return {
+			type: "refund",
+			request: {
+				potId: pot.id,
+				userId: pot.potterId,
+				countryCode: pot.countryCode,
+				currency: pot.currency,
+				amountMinorUnits: pot.prizeAmountMinorUnits,
+				reason,
+				originalReference: pot.fundingReference ?? "",
+				idempotencyKey: `refund:${pot.id}`,
+			},
+		};
 	}
 
 	markRefunded(potId: string) {

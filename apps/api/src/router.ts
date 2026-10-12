@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { d1BindingName, databaseProvider } from '@surescore/db'
 import { appName, type HealthResponse } from '@surescore/shared'
+import { adminRoutes } from './routes/admin/index.js'
 import { authRoutes } from './routes/auth/index.js'
 import { configRoutes } from './routes/config/index.js'
 import { discoverRoutes } from './routes/discover/index.js'
@@ -62,6 +63,7 @@ app.onError((err, c) => {
 
 openapi.get('/api/health', (context) => context.json(healthResponse(context.env.DB)))
 
+openapi.route('/api/admin', adminRoutes)
 openapi.route('/api/auth', authRoutes)
 openapi.route('/api/config', configRoutes)
 openapi.route('/api/discover', discoverRoutes)

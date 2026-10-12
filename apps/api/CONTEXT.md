@@ -44,6 +44,17 @@
 - `GET /pots/:id/settlement` returns latest payout/refund status from the ledger (potter: all payouts + refund; player: own payout)
 - Signup never accepts a country: it is taken from `request.cf.country` and falls back to Nigeria (`resolveSignupCountry`)
 
+## Admin operations and reconciliation (Epic 10)
+- `/api/admin/*` requires `requireAuth` + `requireAdmin` (`User.role = "admin"`; no admin exists by default). Route files are grouped under `src/routes/admin/`.
+- Every admin mutation requires a reason (min 5 chars) and writes an `AdminAuditLog` row. Pot notes, disputes and overrides share that log.
+- Pots: `GET /pots/summary`, `/pots`, `/pots/:id`; `POST /pots/:id/{notes,dispute,dispute/resolve,settlement-override}`. Disputes use the `Disputed` pot state (only from Settling/Paid); resolving returns the pot to its origin. Override (`SettlementOverride`, one per pot, blocked after payouts) is honoured by `SettlementService.settle`.
+- Transfers: `GET /payouts`, `/refunds` (latest ledger state per action); `POST /transfers/retry`. Retry enqueues with `attemptOffset` so the new ledger `entryKey` never collides with earlier attempts. Payout retry uses the user's current payout account.
+- Ops: `GET /health` (provider health from ledger/cache + `JobRun`), `GET /ledger` (search by email, reference, key, pot, user).
+- Reconciliation: pure rules in `packages/shared/src/reconciliation.ts`, run by `ReconciliationService` daily (cron `0 2 * * *`) or on demand (`POST /reconciliation/run`). Findings are deduplicated by fingerprint and reviewed via `/reconciliation/findings/:id/resolve`.
+- Scheduled jobs are recorded in `JobRun` via `trackJob` (14-day retention).
+- UI: `apps/ui/src/pages/admin.tsx` at `/admin` (admins only).
+- D1 limits bound parameters; use `inChunks` for `in` queries.
+
 ## Product rules enforced here
 - Country and provider selection are configuration-driven, not hardcoded
 - User payout details must exist before a first prediction is allowed

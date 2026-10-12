@@ -10,9 +10,11 @@ import type { PaymentProvider, PaymentResult, PayoutRequest, RefundRequest } fro
 import { createProviderRegistry } from "../providers/registry.js";
 import { PrismaLedgerStore, type LedgerStore } from "./ledger.js";
 
-export type TransferJob =
+/** `attemptOffset` keeps ledger attempt numbers unique when an admin re-queues a failed action. */
+export type TransferJob = { attemptOffset?: number } & (
 	| { type: "payout"; request: PayoutRequest }
-	| { type: "refund"; request: RefundRequest };
+	| { type: "refund"; request: RefundRequest }
+);
 
 const RETRY_BASE_DELAY_SECONDS = 30;
 const MAX_RETRY_DELAY_SECONDS = 3600;
@@ -55,7 +57,7 @@ export async function handleTransferBatch(
 			currency: request.currency,
 			amountMinorUnits: request.amountMinorUnits,
 			idempotencyKey: request.idempotencyKey,
-			attempt: message.attempts,
+			attempt: (body.attemptOffset ?? 0) + message.attempts,
 		} as const;
 
 		try {

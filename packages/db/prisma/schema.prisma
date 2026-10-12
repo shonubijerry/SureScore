@@ -82,6 +82,7 @@ model PayoutAccount {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([accountNumber])
 }
 
 // Normalized, cached sports events (see @surescore/shared SportsEvent). This
@@ -138,6 +139,8 @@ model LedgerEntry {
   @@index([idempotencyKey])
   @@index([userId, createdAt])
   @@index([potId])
+  @@index([type, status, createdAt])
+  @@index([reference])
 }
 
 // A funded prediction pot tied to one match. Currency and payment provider are
@@ -181,4 +184,79 @@ model PotStateTransition {
   pot Pot @relation(fields: [potId], references: [id])
 
   @@index([potId, createdAt])
+}
+
+// Append-only trail of every admin action (retries, disputes, overrides,
+// notes, reconciliation reviews). `reason` is mandatory for all of them.
+model AdminAuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  action    String // transfer.retry | dispute.open | dispute.resolve | settlement.override | note | reconciliation.resolve
+  potId     String?
+  subject   String? // idempotency key, finding id, ...
+  reason    String
+  createdAt DateTime @default(now())
+
+  @@index([potId, createdAt])
+  @@index([createdAt])
+}
+
+// Admin-supplied regulation result used instead of the cached match when the
+// provider data is wrong or stuck. One per pot; final once written.
+model SettlementOverride {
+  id              String   @id @default(cuid())
+  potId           String   @unique
+  homeGoals       Int
+  awayGoals       Int
+  firstGoalMinute Int?
+  reason          String
+  adminId         String
+  createdAt       DateTime @default(now())
+}
+
+// One row per background job execution, for the admin job-failure view.
+model JobRun {
+  id         String   @id @default(cuid())
+  job        String // fixture-prefetch | live-refresh | settlement | reconciliation
+  kind       String // sports | payments | finance
+  status     String // ok | failed
+  error      String?
+  durationMs Int
+  startedAt  DateTime @default(now())
+
+  @@index([job, startedAt])
+  @@index([status, startedAt])
+}
+
+// A reconciliation pass over the ledger. `summary` is JSON totals per currency.
+model ReconciliationRun {
+  id           String   @id @default(cuid())
+  scopeFrom    DateTime
+  potsChecked  Int
+  findingCount Int
+  summary      String
+  startedAt    DateTime @default(now())
+
+  @@index([startedAt])
+}
+
+// An anomaly found by reconciliation. `fingerprint` makes re-runs idempotent:
+// the same anomaly is recorded (and reviewed) once.
+model ReconciliationFinding {
+  id             String    @id @default(cuid())
+  runId          String
+  fingerprint    String    @unique
+  code           String
+  severity       String // critical | high | medium
+  potId          String?
+  userId         String?
+  detail         String
+  status         String    @default("open") // open | resolved
+  resolvedBy     String?
+  resolutionNote String?
+  resolvedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([status, severity])
+  @@index([potId])
 }

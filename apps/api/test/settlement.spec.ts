@@ -84,7 +84,7 @@ describe("SettlementService.settle", () => {
 		const send = vi.fn().mockResolvedValue(undefined);
 		const pots = { transition: vi.fn().mockResolvedValue(true), cancel: vi.fn().mockResolvedValue(true) };
 		const ledger = { append: vi.fn().mockResolvedValue(undefined), isInFlightOrDone: vi.fn() };
-		const db = { pot: { findUnique: vi.fn().mockResolvedValue(found) } };
+		const db = { pot: { findUnique: vi.fn().mockResolvedValue(found) }, settlementOverride: { findUnique: vi.fn().mockResolvedValue(null) } };
 		const service = new SettlementService({ TRANSFER_QUEUE: { sendBatch: send }, DB: {} } as never, pots as never, ledger as never);
 		(service as unknown as { db: unknown }).db = db;
 		return { service, send, pots, ledger };

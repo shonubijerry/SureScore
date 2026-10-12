@@ -1,4 +1,5 @@
 import { createMiddleware } from "hono/factory";
+import { createDbClient } from "@surescore/db";
 import { verifySession, AuthError } from "./auth.js";
 import type { AppEnv } from "../types.js";
 
@@ -19,5 +20,17 @@ export const requireAuth = createMiddleware<AppEnv>(async (context, next) => {
 		throw error;
 	}
 
+	await next();
+});
+
+/** Requires an admin user. Mount after `requireAuth`. */
+export const requireAdmin = createMiddleware<AppEnv>(async (context, next) => {
+	const user = await createDbClient(context.env.DB).user.findUnique({
+		where: { id: context.get("userId") },
+		select: { role: true },
+	});
+	if (user?.role !== "admin") {
+		return context.json({ error: "Admin access required." }, 403);
+	}
 	await next();
 });

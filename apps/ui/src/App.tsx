@@ -12,6 +12,7 @@ const MatchesPage = lazy(() => import('./pages/matches'))
 const MatchDetailPage = lazy(() => import('./pages/match-detail'))
 const PotDetailPage = lazy(() => import('./pages/pot-detail'))
 const CreatePotPage = lazy(() => import('./pages/create-pot'))
+const AdminPage = lazy(() => import('./pages/admin'))
 const AuthPage = lazy(() => import('./pages/auth'))
 
 export default function App() {
@@ -31,6 +32,7 @@ export default function App() {
               <Route element={<RequireAuth />}>
                 <Route path="my-pots" element={<MyPotsPage />} />
                 <Route path="pots/new" element={<CreatePotPage />} />
+                <Route path="admin" element={<AdminPage />} />
               </Route>
             </Route>
           </Routes>

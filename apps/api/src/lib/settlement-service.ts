@@ -12,6 +12,7 @@ import {
 	distributePrizes,
 	rankPredictions,
 	regulationOutcome,
+	type MatchOutcome,
 	type PayoutRequest,
 } from "@surescore/shared";
 import { PrismaLedgerStore, type LedgerStore } from "./ledger.js";
@@ -31,16 +32,22 @@ interface TransferRow {
 	detail: string | null;
 }
 
+/** Attempt number encoded in a ledger `entryKey` ("{idempotencyKey}:{attempt}"). */
+export const attemptOf = (row: Pick<TransferRow, "entryKey">) => Number(row.entryKey.split(":").pop());
+
 /** Current state of each financial action: its highest-numbered ledger attempt. */
 export function latestPerAction<T extends Pick<TransferRow, "entryKey" | "idempotencyKey">>(rows: T[]): T[] {
-	const attempt = (row: T) => Number(row.entryKey.split(":").pop());
 	const latest = new Map<string, T>();
 	for (const row of rows) {
 		const seen = latest.get(row.idempotencyKey);
-		if (!seen || attempt(row) > attempt(seen)) latest.set(row.idempotencyKey, row);
+		if (!seen || attemptOf(row) > attemptOf(seen)) latest.set(row.idempotencyKey, row);
 	}
 	return [...latest.values()];
 }
+
+/** The account a payout goes to: the user's default in the pot's country, else any account there. */
+export const pickPayoutAccount = <T extends { countryCode: string; isDefault: boolean }>(accounts: T[], countryCode: string) =>
+	accounts.find((a) => a.countryCode === countryCode && a.isDefault) ?? accounts.find((a) => a.countryCode === countryCode);
 
 export class SettlementService {
 	private readonly db;
@@ -76,7 +83,16 @@ export class SettlementService {
 		});
 		if (!pot || pot.status !== "Settling") return false;
 
-		const outcome = regulationOutcome(pot.event);
+		// A manual override (T10.5) replaces the cached provider result.
+		const override = await this.db.settlementOverride.findUnique({ where: { potId } });
+		const outcome = override
+			? {
+					home: override.homeGoals,
+					away: override.awayGoals,
+					firstGoalMinute: override.firstGoalMinute,
+					underdog: pot.event.underdog as MatchOutcome["underdog"],
+				}
+			: regulationOutcome(pot.event);
 		if (!outcome) return false;
 
 		if (pot.predictions.length === 0) {
@@ -95,9 +111,7 @@ export class SettlementService {
 		const jobs: TransferJob[] = [];
 		for (const { entry, amountMinorUnits } of distributePrizes(ranked, pot.winnerCount, pot.prizeAmountMinorUnits)) {
 			const { user } = entry.item;
-			const account =
-				user.payoutAccounts.find((a) => a.countryCode === pot.countryCode && a.isDefault) ??
-				user.payoutAccounts.find((a) => a.countryCode === pot.countryCode);
+			const account = pickPayoutAccount(user.payoutAccounts, pot.countryCode);
 			const base = {
 				potId: pot.id,
 				userId: user.id,
