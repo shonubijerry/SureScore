@@ -135,3 +135,21 @@ describe("pagination", () => {
 		expect(toPage(rows).items).toHaveLength(4);
 	});
 });
+
+describe("popular matches", () => {
+	it("ranks upcoming matches by provider importance, then kickoff", async () => {
+		const base = { provider: "espn", league: "t", homeTeam: "H", awayTeam: "A", status: "scheduled", lastRefreshedAt: new Date() };
+		const at = (h: number) => new Date(Date.now() + h * 3_600_000);
+		await db.sportsEventCache.createMany({
+			data: [
+				{ ...base, id: "espn:p1", externalId: "p1", kickoffTimeUtc: at(1), importance: 0 },
+				{ ...base, id: "espn:p2", externalId: "p2", kickoffTimeUtc: at(3), importance: 3 },
+				{ ...base, id: "espn:p3", externalId: "p3", kickoffTimeUtc: at(2), importance: 3 },
+			],
+		});
+		const { default: app } = await import("../src/index");
+		const res = await app.fetch(new Request("http://x/api/discover/matches/popular"), env, { waitUntil() {}, passThroughOnException() {} } as never);
+		const ids = ((await res.json()) as { matches: { id: string }[] }).matches.map((m) => m.id);
+		expect(ids.slice(0, 3)).toEqual(["p3", "p2", "p1"]);
+	});
+});

@@ -21,6 +21,7 @@ export interface Match {
   awayScore: number | null
   isFinalResultOfficial: boolean
   freshness: 'live' | 'cached' | 'stale'
+  importance?: number
   lastRefreshedAt: string
 }
 

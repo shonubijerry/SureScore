@@ -32,6 +32,8 @@ interface EspnCompetition {
 	competitors: EspnCompetitor[]
 	details?: EspnDetail[]
 	odds?: (EspnOdds | null)[]
+	broadcasts?: unknown[]
+	geoBroadcasts?: unknown[]
 }
 
 interface EspnDetail {
@@ -75,6 +77,12 @@ function toFirstGoalMinute(details: EspnDetail[] = []): number | null {
 		.filter((d) => d.scoringPlay && !d.shootout && typeof d.clock?.value === 'number' && d.clock.value <= REGULATION_SECONDS)
 		.map((d) => d.clock?.value as number)
 	return seconds.length ? Math.max(1, Math.ceil(Math.min(...seconds) / 60)) : null
+}
+
+/** ESPN exposes no explicit "important match" flag; the number of broadcast listings is the best prominence signal it gives. */
+function toImportance(competition?: EspnCompetition): number | undefined {
+	if (!competition?.broadcasts && !competition?.geoBroadcasts) return undefined
+	return (competition.broadcasts?.length ?? 0) + (competition.geoBroadcasts?.length ?? 0)
 }
 
 /** The side with the longer American moneyline price is the underdog; level prices have none. */
@@ -122,6 +130,7 @@ function normalizeEvent(league: string, event: EspnEvent): SportsEvent {
 		isFinalResultOfficial: status === 'full time',
 		firstGoalMinute: toFirstGoalMinute(competition?.details),
 		underdog: toUnderdog(competition?.odds),
+		importance: toImportance(competition),
 		lastUpdatedUtc: new Date().toISOString(),
 	}
 }

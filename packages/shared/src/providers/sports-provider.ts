@@ -30,6 +30,8 @@ export interface SportsEvent {
   firstGoalMinute?: number | null;
   /** Pre-match underdog derived from the moneyline; null when odds are unavailable or level. */
   underdog?: "home" | "away" | null;
+  /** Provider-signalled prominence (higher = more prominent); used to rank popular matches. */
+  importance?: number;
   lastUpdatedUtc: string;
 }
 

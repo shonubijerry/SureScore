@@ -13,6 +13,7 @@ export const sportsEventSchema = z.object({
 	homeScore: z.number().nullable(),
 	awayScore: z.number().nullable(),
 	isFinalResultOfficial: z.boolean(),
+	importance: z.number().int().optional().describe("Provider-signalled prominence; higher is more popular"),
 	freshness: z.enum(["live", "cached", "stale"]),
 	lastRefreshedAt: z.string(),
 });

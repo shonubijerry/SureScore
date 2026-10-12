@@ -21,6 +21,7 @@ const AdminLedger = lazy(() => import('./pages/admin/ledger'))
 const AdminReconciliation = lazy(() => import('./pages/admin/reconciliation'))
 const AdminStaff = lazy(() => import('./pages/admin/staff'))
 const AdminAudit = lazy(() => import('./pages/admin/audit'))
+const FaqPage = lazy(() => import('./pages/faq'))
 const AuthPage = lazy(() => import('./pages/auth'))
 
 export default function App() {
@@ -35,6 +36,7 @@ export default function App() {
               <Route path="matches/:id" element={<MatchDetailPage />} />
               <Route path="pots" element={<PotsPage />} />
               <Route path="pots/:id" element={<PotDetailPage />} />
+              <Route path="faq" element={<FaqPage />} />
               <Route path="login" element={<AuthPage mode="login" />} />
               <Route path="signup" element={<AuthPage mode="signup" />} />
               <Route element={<RequireAuth />}>

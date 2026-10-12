@@ -1,5 +1,5 @@
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
-import { CalendarDays, Home, LogIn, Shield, Trophy, Wallet } from 'lucide-react'
+import { CalendarDays, CircleHelp, Home, LogIn, Shield, Trophy, Wallet } from 'lucide-react'
 import { isStaffRole } from '@surescore/shared'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '../lib/auth'
@@ -37,6 +37,9 @@ export function Layout() {
               </NavLink>
             ))}
           </nav>
+          <Link to="/faq" aria-label="FAQ" className="ml-auto text-muted-foreground hover:text-foreground">
+            <CircleHelp aria-hidden className="size-5" />
+          </Link>
           {user ? (
             <Button variant="outline" size="sm" onClick={logout}>
               Sign out

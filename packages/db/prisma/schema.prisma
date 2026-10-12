@@ -106,6 +106,7 @@ model SportsEventCache {
   isFinalResultOfficial Boolean  @default(false)
   firstGoalMinute       Int? // regulation-time first goal; tie-break input
   underdog              String? // home | away, from pre-match moneyline; tie-break input
+  importance            Int      @default(0) // provider-signalled prominence (ESPN: broadcast coverage count); ranks popular matches
   freshness             String   @default("cached") // live | cached | stale
   lastRefreshedAt       DateTime
   createdAt             DateTime @default(now())
@@ -117,6 +118,7 @@ model SportsEventCache {
   @@index([league])
   @@index([status])
   @@index([kickoffTimeUtc])
+  @@index([status, importance])
 }
 
 // Append-only financial ledger. Rows are never updated or deleted: every

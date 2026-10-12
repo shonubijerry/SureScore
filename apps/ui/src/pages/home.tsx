@@ -1,10 +1,9 @@
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { ListState, Section, SignInPrompt } from '../components/bits'
+import { ListState, Section } from '../components/bits'
 import { MatchCard } from '../components/match-card'
 import { PotCard } from '../components/pot-card'
 import { useAuth } from '../lib/auth'
-import { queryString } from '../lib/api'
 import type { Match, PredictedPot } from '../lib/types'
 import { useApi } from '../lib/use-api'
 
@@ -12,11 +11,9 @@ import { useApi } from '../lib/use-api'
 const LIVE_REFRESH_MS = 120_000
 
 function MyMatches() {
-  const { user } = useAuth()
-  const query = useApi<{ predictions: PredictedPot[] }>(user ? '/api/pots/predicted' : null, LIVE_REFRESH_MS)
+  const query = useApi<{ predictions: PredictedPot[] }>('/api/pots/predicted', LIVE_REFRESH_MS)
   const list = { ...query, data: query.data?.predictions ?? null }
 
-  if (!user) return <SignInPrompt>Sign in to see the matches you've predicted.</SignInPrompt>
   return (
     <ListState query={list} empty="You haven't predicted any upcoming or live matches yet. Pick a pot below!">
       {(items) =>
@@ -35,21 +32,29 @@ function MyMatches() {
   )
 }
 
-function PopularMatches() {
-  const { user } = useAuth()
-  const query = useApi<{ matches: (Match & { potCount: number })[] }>(
-    `/api/discover/matches/popular${queryString({ countryCode: user?.countryCode })}`,
-  )
+function UpcomingMatches() {
+  const query = useApi<{ matches: Match[] }>('/api/sports/upcoming?limit=10')
   const list = { ...query, data: query.data?.matches ?? null }
 
   return (
-    <ListState query={list} empty="No matches have active pots yet.">
+    <ListState query={list} empty="No upcoming matches yet.">
+      {(items) => items.map((match) => <MatchCard key={match.cacheId} match={match} />)}
+    </ListState>
+  )
+}
+
+function PopularMatches() {
+  const query = useApi<{ matches: (Match & { potCount: number })[] }>('/api/discover/matches/popular')
+  const list = { ...query, data: query.data?.matches ?? null }
+
+  return (
+    <ListState query={list} empty="No upcoming matches yet.">
       {(items) =>
         items.map((match) => (
           <MatchCard
             key={match.cacheId}
             match={match}
-            footer={<p className="text-xs text-muted-foreground">{match.potCount} active pot{match.potCount > 1 ? 's' : ''}</p>}
+            footer={<p className="text-xs text-muted-foreground">{match.potCount} active pot{match.potCount === 1 ? '' : 's'}</p>}
           />
         ))
       }
@@ -58,11 +63,14 @@ function PopularMatches() {
 }
 
 export default function HomePage() {
+  const { user } = useAuth()
   return (
     <>
-      <Section title="Your matches">
-        <MyMatches />
-      </Section>
+      {user ? (
+        <Section title="Your matches">
+          <MyMatches />
+        </Section>
+      ) : null}
       <Section
         title="Popular matches"
         action={
@@ -73,6 +81,11 @@ export default function HomePage() {
       >
         <PopularMatches />
       </Section>
+      {!user && (
+        <Section title="Upcoming matches">
+          <UpcomingMatches />
+        </Section>
+      )}
       <Link to="/matches" className="block">
         <Button size="lg" className="h-12 w-full text-base">
           Browse matches & create a pot

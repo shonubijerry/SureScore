@@ -39,6 +39,7 @@ export function toRecord(row: {
 	isFinalResultOfficial: boolean
 	firstGoalMinute: number | null
 	underdog: string | null
+	importance: number
 	freshness: string
 	lastRefreshedAt: Date
 }): SportsEventCacheRecord {
@@ -55,6 +56,7 @@ export function toRecord(row: {
 		isFinalResultOfficial: row.isFinalResultOfficial,
 		firstGoalMinute: row.firstGoalMinute,
 		underdog: row.underdog as SportsEvent['underdog'],
+		importance: row.importance,
 		freshness: row.freshness as CacheFreshness,
 		lastRefreshedAt: row.lastRefreshedAt.toISOString(),
 		lastUpdatedUtc: row.lastRefreshedAt.toISOString(),
@@ -87,6 +89,7 @@ export class PrismaSportsEventCacheStore implements SportsEventCacheStore {
 					// details, so a missing value must never erase one already cached.
 					firstGoalMinute: event.firstGoalMinute ?? undefined,
 					underdog: event.underdog ?? undefined,
+					importance: event.importance ?? undefined,
 					freshness: event.freshness,
 					lastRefreshedAt: new Date(event.lastRefreshedAt),
 				}
