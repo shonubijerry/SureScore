@@ -3,6 +3,7 @@
 // (resolved by country config) and the transfer queue. Every state change goes
 // through `transition`, which is the single place that writes the audit trail.
 
+import { log } from "./logger.js"
 import { HTTPException } from "hono/http-exception";
 import { createDbClient, type Pot } from "@surescore/db";
 import {
@@ -151,7 +152,7 @@ export class PotService {
 			});
 		} catch (error) {
 			await this.cancel(pot, SYSTEM_ACTOR, "cancelled");
-			console.error("Pot funding initialization failed:", error);
+			log.error("fund", "init_failed", { error });
 			throw new HTTPException(502, { message: "Payment provider is unavailable. Please try again later." });
 		}
 

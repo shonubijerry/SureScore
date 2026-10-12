@@ -5,6 +5,8 @@ import { PotService } from "./lib/pot-service.js";
 import { SettlementService } from "./lib/settlement-service.js";
 import { handleTransferBatch, type TransferJob } from "./lib/transfer-queue.js";
 import { ReconciliationService } from "./lib/reconciliation-service.js";
+import { dispatchAlerts } from "./lib/alerts.js";
+import { log } from "./lib/logger.js";
 import { pruneJobRuns, trackJob } from "./lib/job-runs.js";
 import { invalidateStaleEvents, prefetchFixtures, refreshLiveScores } from "./lib/sports-ingestion.js";
 
@@ -25,18 +27,17 @@ export default {
 	},
 
 	async scheduled(controller: ScheduledController, env: Env) {
-		console.log(`Scheduled task triggered: "${controller.cron}"`);
+		log.info("job", "scheduled", { cron: controller.cron });
 
 		// Sports provider selection is config-driven (T4.2/T3.5); today every
 		// launched country maps to ESPN, but this never hardcodes that fact.
 		const registry = createProviderRegistry(env);
 		const provider = registry.resolveSportsProviderForCountry("NG");
-		console.log(`Resolved sports provider for country NG:`, provider);
 		const store = new PrismaSportsEventCacheStore(env.DB);
 
 		if (controller.cron === FIXTURE_PREFETCH_CRON) {
 			await trackJob(env.DB, "fixture-prefetch", "sports", () => prefetchFixtures(provider, store));
-			await pruneJobRuns(env.DB).catch((error) => console.error("Job run pruning failed:", error));
+			await pruneJobRuns(env.DB).catch((error) => log.error("job", "prune_failed", { error }));
 			return;
 		}
 
@@ -51,6 +52,7 @@ export default {
 				await pots.syncStatuses();
 				await new SettlementService(env, pots).settleAll();
 			});
+			await dispatchAlerts(env).catch((error) => log.error("alert", "dispatch_failed", { error }));
 			return;
 		}
 
@@ -61,7 +63,7 @@ export default {
 			return;
 		}
 
-		console.warn(`Unhandled cron trigger: "${controller.cron}"`);
+		log.warn("job", "unhandled_cron", { cron: controller.cron });
 	},
 };
 

@@ -3,11 +3,12 @@
 // AdminAuditLog row with its mandatory reason, and pot state changes go
 // through PotService.transition so the lifecycle audit trail stays single-sourced.
 
+import { recordAudit, type AuditAction } from "./audit.js";
 import { createDbClient, type Pot } from "@surescore/db";
 import type { PotStatus } from "@surescore/shared";
 import { fail, PotService, type Actor } from "./pot-service.js";
 import { SettlementService } from "./settlement-service.js";
-import { toPage } from "./chunk.js";
+import { pageArgs, toPage } from "./pagination.js";
 
 export interface OverrideInput {
 	homeGoals: number;
@@ -29,8 +30,8 @@ export class AdminPotService {
 		this.db = createDbClient(env.DB);
 	}
 
-	audit(actorId: string, action: string, reason: string, target: { potId?: string; subject?: string } = {}) {
-		return this.db.adminAuditLog.create({ data: { actorId, action, reason, ...target } });
+	audit(actorId: string, action: AuditAction, reason: string, target: { potId?: string; subject?: string } = {}) {
+		return recordAudit(this.db, actorId, action, reason, target);
 	}
 
 	async summary() {
@@ -47,13 +48,12 @@ export class AdminPotService {
 		}));
 	}
 
-	async list({ status, limit, cursor }: { status?: string; limit: number; cursor?: string }) {
+	async list({ status, limit, cursor }: { status?: string; limit?: number; cursor?: string }) {
 		const rows = await this.db.pot.findMany({
 			where: status ? { status } : {},
 			include: { event: { select: { homeTeam: true, awayTeam: true, kickoffTimeUtc: true, status: true } } },
 			orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-			take: limit + 1,
-			...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+			...pageArgs({ limit, cursor }),
 		});
 		return toPage(rows, limit);
 	}

@@ -178,3 +178,23 @@ export interface ReconciliationStatus {
   run: { startedAt: string; status?: string; summary: unknown } | null
   open: Record<string, number>
 }
+
+export interface StaffUser {
+  id: string
+  email: string
+  displayName: string | null
+  role: 'user' | 'staff' | 'admin'
+  countryCode: string
+  createdAt: string
+}
+
+export interface AuditEntry {
+  id: string
+  actorId: string
+  actorEmail: string | null
+  action: string
+  potId: string | null
+  subject: string | null
+  reason: string
+  createdAt: string
+}

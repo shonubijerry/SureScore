@@ -1,6 +1,7 @@
 import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
 import { createDbClient } from "@surescore/db";
+import { toPublicAccount } from "../../lib/secure-data.js";
 import type { AppContext } from "../../types.js";
 import { payoutAccountSchema } from "./schema.js";
 
@@ -22,6 +23,6 @@ export class ListPayoutAccountsEndpoint extends OpenAPIRoute {
 			where: { userId: c.get("userId") },
 			orderBy: { createdAt: "asc" },
 		});
-		return c.json({ payoutAccounts: accounts });
+		return c.json({ payoutAccounts: accounts.map(toPublicAccount) });
 	}
 }

@@ -2,6 +2,7 @@
 // Recording is best-effort: it must never fail or mask the job itself.
 
 import { createDbClient } from "@surescore/db";
+import { log } from "./logger.js";
 
 export type JobKind = "sports" | "payments" | "finance";
 type JobOutcome = { failures?: { error: string }[] } | void;
@@ -27,9 +28,10 @@ export async function trackJob(database: D1Database, job: string, kind: JobKind,
 			},
 		});
 	} catch (recordError) {
-		console.error("Failed to record job run:", job, recordError);
+		log.error("job", "record_failed", { job, error: recordError });
 	}
-	if (error) console.warn(`Job ${job} failed:`, error);
+	if (error) log.error("job", "failed", { job, kind, error });
+	else log.info("job", "ok", { job, kind, durationMs: Date.now() - startedAt });
 }
 
 const JOB_RETENTION_DAYS = 14;

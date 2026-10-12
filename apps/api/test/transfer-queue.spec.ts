@@ -15,7 +15,7 @@ const makeLedger = (inFlight = false) => ({
 	isInFlightOrDone: vi.fn().mockResolvedValue(inFlight),
 });
 const run = (messages: ReturnType<typeof makeMessage>[], provider: object, ledger = makeLedger(), onRefunded?: (id: string) => Promise<unknown>) =>
-	handleTransferBatch({ messages } as never, {} as Env, { resolveProvider: () => provider as never, ledger, onRefunded });
+	handleTransferBatch({ messages } as never, {} as Env, { resolveProvider: () => provider as never, ledger, onRefunded, resolveRecipient: async () => "RCP_1" });
 
 describe("transfer queue consumer", () => {
 	it("acks successful and pending transfers", async () => {

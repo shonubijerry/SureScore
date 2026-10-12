@@ -6,8 +6,10 @@
 // admin follow-up. Each attempt outcome is appended to the immutable ledger,
 // and actions already pending/successful in the ledger are never resent.
 
+import { log } from "./logger.js"
 import type { PaymentProvider, PaymentResult, PayoutRequest, RefundRequest } from "@surescore/shared";
 import { createProviderRegistry } from "../providers/registry.js";
+import { ensureRecipient } from "./payout-recipient.js";
 import { PrismaLedgerStore, type LedgerStore } from "./ledger.js";
 
 /** `attemptOffset` keeps ledger attempt numbers unique when an admin re-queues a failed action. */
@@ -27,8 +29,13 @@ export const enqueueTransfers = (env: Env, jobs: TransferJob[]) =>
 export const retryDelaySeconds = (attempts: number) =>
 	Math.min(RETRY_BASE_DELAY_SECONDS * 2 ** (attempts - 1), MAX_RETRY_DELAY_SECONDS);
 
-const executeTransfer = (provider: PaymentProvider, job: TransferJob): Promise<PaymentResult> =>
-	job.type === "payout" ? provider.payout(job.request) : provider.refund(job.request);
+type ResolveRecipient = (provider: PaymentProvider, request: PayoutRequest) => Promise<string>;
+
+async function executeTransfer(provider: PaymentProvider, job: TransferJob, resolveRecipient: ResolveRecipient): Promise<PaymentResult> {
+	if (job.type === "refund") return provider.refund(job.request);
+	const recipientCode = job.request.recipientCode ?? (await resolveRecipient(provider, job.request));
+	return provider.payout({ ...job.request, recipientCode });
+}
 
 export async function handleTransferBatch(
 	batch: MessageBatch<TransferJob>,
@@ -36,6 +43,7 @@ export async function handleTransferBatch(
 	deps: {
 		resolveProvider?: (countryCode: string) => PaymentProvider;
 		ledger?: LedgerStore;
+		resolveRecipient?: ResolveRecipient;
 		/** Called once a refund is confirmed successful by the provider. */
 		onRefunded?: (potId: string) => Promise<unknown>;
 	} = {},
@@ -43,6 +51,8 @@ export async function handleTransferBatch(
 	const registry = createProviderRegistry(env);
 	const resolveProvider =
 		deps.resolveProvider ?? ((country: string) => registry.resolvePaymentProviderForCountry(country));
+	const resolveRecipient: ResolveRecipient =
+		deps.resolveRecipient ?? ((provider, req) => ensureRecipient(env, provider, req.payoutAccountId, req.currency));
 	const ledger = deps.ledger ?? new PrismaLedgerStore(env.DB);
 
 	for (const message of batch.messages) {
@@ -68,7 +78,7 @@ export async function handleTransferBatch(
 
 			const provider = resolveProvider(request.countryCode);
 			try {
-				const result = await executeTransfer(provider, body);
+				const result = await executeTransfer(provider, body, resolveRecipient);
 				await ledger.append({ ...entry, status: result.status, provider: result.provider, reference: result.reference });
 				if (result.status === "successful" && body.type === "refund") {
 					await deps.onRefunded?.(request.potId);
@@ -79,7 +89,7 @@ export async function handleTransferBatch(
 				throw error;
 			}
 		} catch (error) {
-			console.error(`Transfer ${body.type} failed, will retry:`, request.idempotencyKey, error);
+			log.error(body.type === "refund" ? "refund" : "payout", "transfer_failed", { idempotencyKey: request.idempotencyKey, error });
 			retry();
 		}
 	}

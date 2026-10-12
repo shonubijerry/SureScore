@@ -4,6 +4,7 @@ export type AppEnv = {
 	Bindings: Env;
 	Variables: {
 		userId: string;
+		role?: string;
 	};
 };
 

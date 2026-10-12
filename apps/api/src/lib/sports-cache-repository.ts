@@ -5,6 +5,7 @@
 
 import type { CacheFreshness, MatchStatus, SportsEvent } from '@surescore/shared'
 import { createDbClient } from '@surescore/db'
+import { PAGE_DEFAULT } from './pagination.js'
 
 export interface SportsEventCacheRecord extends SportsEvent {
 	freshness: CacheFreshness
@@ -14,7 +15,7 @@ export interface SportsEventCacheRecord extends SportsEvent {
 export interface SportsEventCacheStore {
 	upsertMany(events: SportsEventCacheRecord[]): Promise<void>
 	listByStatus(status: MatchStatus, league?: string): Promise<SportsEventCacheRecord[]>
-	listUpcoming(league?: string, limit?: number): Promise<SportsEventCacheRecord[]>
+	listUpcoming(league?: string, limit?: number, cursor?: string): Promise<SportsEventCacheRecord[]>
 	getById(id: string): Promise<SportsEventCacheRecord | null>
 	listAll(): Promise<SportsEventCacheRecord[]>
 	updateFreshness(id: string, freshness: CacheFreshness): Promise<void>
@@ -111,11 +112,13 @@ export class PrismaSportsEventCacheStore implements SportsEventCacheStore {
 		return rows.map(toRecord)
 	}
 
-	async listUpcoming(league?: string, limit = 50): Promise<SportsEventCacheRecord[]> {
+	/** `cursor` is the cache id (`{provider}:{externalId}`) of the last row of the previous page. */
+	async listUpcoming(league?: string, limit = PAGE_DEFAULT, cursor?: string): Promise<SportsEventCacheRecord[]> {
 		const rows = await this.db.sportsEventCache.findMany({
 			where: { status: 'scheduled', ...(league ? { league } : {}) },
-			orderBy: { kickoffTimeUtc: 'asc' },
+			orderBy: [{ kickoffTimeUtc: 'asc' }, { id: 'asc' }],
 			take: limit,
+			...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
 		})
 		return rows.map(toRecord)
 	}

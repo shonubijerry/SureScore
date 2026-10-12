@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { fromHono } from "chanfana";
 import { requireAuth } from "../../lib/middleware.js";
+import { rateLimit, rateLimits } from "../../lib/rate-limit.js";
 import type { AppEnv } from "../../types.js";
 import { CreatePotEndpoint } from "./create.js";
 import { ListPotsEndpoint } from "./list.js";
@@ -18,6 +19,8 @@ import {
 
 const hono = new Hono<AppEnv>();
 hono.use("*", requireAuth);
+hono.post("/", rateLimit(rateLimits.createPot));
+hono.on(["POST", "PUT"], "/:id/predictions", rateLimit(rateLimits.prediction));
 
 export const potRoutes = fromHono(hono);
 

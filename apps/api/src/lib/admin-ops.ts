@@ -3,7 +3,7 @@
 
 import { createDbClient } from "@surescore/db";
 import { paymentProviderConfigs, sportsProviderConfigs } from "@surescore/shared";
-import { toPage } from "./chunk.js";
+import { pageArgs, toPage } from "./pagination.js";
 
 const DAY_MS = 86_400_000;
 
@@ -17,7 +17,7 @@ export interface LedgerSearch {
 	userId?: string;
 	from?: Date;
 	to?: Date;
-	limit: number;
+	limit?: number;
 	cursor?: string;
 }
 
@@ -117,8 +117,7 @@ export class AdminOpsService {
 			where,
 			include: { user: { select: { email: true, displayName: true } } },
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-			take: limit + 1,
-			...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+			...pageArgs({ limit, cursor }),
 		});
 		return toPage(rows, limit);
 	}

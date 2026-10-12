@@ -2,8 +2,9 @@ import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
 import { AdminPotService } from "../../lib/admin-pots.js";
 import { AdminTransferService } from "../../lib/admin-transfers.js";
+import { pageQuery } from "../../lib/pagination.js";
 import type { AppContext } from "../../types.js";
-import { okResponse, pageQuery, reasonSchema } from "./schema.js";
+import { okResponse, reasonSchema } from "./schema.js";
 
 const service = (c: AppContext) => new AdminTransferService(c.env, new AdminPotService(c.env));
 

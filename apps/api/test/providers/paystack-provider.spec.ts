@@ -74,7 +74,8 @@ describe("PaystackProvider", () => {
         countryCode: "NG",
         currency: "NGN",
         amountMinorUnits: 1000,
-        payoutAccountId: "RCP_1",
+        payoutAccountId: "acct_1",
+        recipientCode: "RCP_1",
         idempotencyKey: "idem_2",
       }),
     ).rejects.toThrow("Insufficient balance");

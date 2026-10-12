@@ -2,6 +2,8 @@ import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
 import { createDbClient } from "@surescore/db";
 import { resolvePaymentProviderForCountry } from "@surescore/shared";
+import { recordAudit } from "../../lib/audit.js";
+import { sealAccountNumber, toPublicAccount } from "../../lib/secure-data.js";
 import type { AppContext } from "../../types.js";
 import { payoutAccountSchema } from "./schema.js";
 
@@ -44,12 +46,13 @@ export class CreatePayoutAccountEndpoint extends OpenAPIRoute {
 				countryCode: user.countryCode,
 				provider: provider.id,
 				accountName: body.accountName,
-				accountNumber: body.accountNumber,
+				...(await sealAccountNumber(c.env.PAYOUT_ENCRYPTION_KEY, body.accountNumber, body.bankCode)),
 				bankCode: body.bankCode,
 				isDefault: existingCount === 0,
 			},
 		});
 
-		return c.json({ payoutAccount: account }, 201);
+		await recordAudit(db, userId, "payout_account.create", "user-initiated", { subject: account.id });
+		return c.json({ payoutAccount: toPublicAccount(account) }, 201);
 	}
 }

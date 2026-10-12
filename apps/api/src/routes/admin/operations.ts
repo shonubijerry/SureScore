@@ -1,8 +1,9 @@
 import { OpenAPIRoute } from "chanfana";
 import { z } from "zod";
 import { AdminOpsService } from "../../lib/admin-ops.js";
+import { pageQuery } from "../../lib/pagination.js";
 import type { AppContext } from "../../types.js";
-import { okResponse, pageQuery } from "./schema.js";
+import { okResponse } from "./schema.js";
 
 export class ProviderHealthEndpoint extends OpenAPIRoute {
 	schema = {

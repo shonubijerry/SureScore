@@ -8,13 +8,3 @@ export async function inChunks<K, R>(values: readonly K[], query: (chunk: K[]) =
 	}
 	return results;
 }
-
-export interface Page<T> {
-	items: T[];
-	nextCursor: string | null;
-}
-
-/** Trims a `take: limit + 1` result to a page and derives the cursor from the extra row. */
-export function toPage<T extends { id: string }>(rows: T[], limit: number): Page<T> {
-	return rows.length > limit ? { items: rows.slice(0, limit), nextCursor: rows[limit - 1].id } : { items: rows, nextCursor: null };
-}

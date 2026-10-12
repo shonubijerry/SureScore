@@ -12,7 +12,15 @@ const MatchesPage = lazy(() => import('./pages/matches'))
 const MatchDetailPage = lazy(() => import('./pages/match-detail'))
 const PotDetailPage = lazy(() => import('./pages/pot-detail'))
 const CreatePotPage = lazy(() => import('./pages/create-pot'))
-const AdminPage = lazy(() => import('./pages/admin'))
+const AdminLayout = lazy(() => import('./pages/admin/layout').then((m) => ({ default: m.AdminLayout })))
+const AdminDashboard = lazy(() => import('./pages/admin/dashboard'))
+const AdminPotList = lazy(() => import('./pages/admin/pots').then((m) => ({ default: m.PotList })))
+const AdminPotDetail = lazy(() => import('./pages/admin/pots').then((m) => ({ default: m.PotDetail })))
+const AdminTransfers = lazy(() => import('./pages/admin/transfers'))
+const AdminLedger = lazy(() => import('./pages/admin/ledger'))
+const AdminReconciliation = lazy(() => import('./pages/admin/reconciliation'))
+const AdminStaff = lazy(() => import('./pages/admin/staff'))
+const AdminAudit = lazy(() => import('./pages/admin/audit'))
 const AuthPage = lazy(() => import('./pages/auth'))
 
 export default function App() {
@@ -32,7 +40,19 @@ export default function App() {
               <Route element={<RequireAuth />}>
                 <Route path="my-pots" element={<MyPotsPage />} />
                 <Route path="pots/new" element={<CreatePotPage />} />
-                <Route path="admin" element={<AdminPage />} />
+              </Route>
+            </Route>
+            <Route element={<RequireAuth />}>
+              <Route path="admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="pots" element={<AdminPotList />} />
+                <Route path="pots/:id" element={<AdminPotDetail />} />
+                <Route path="payouts" element={<AdminTransfers type="payouts" />} />
+                <Route path="refunds" element={<AdminTransfers type="refunds" />} />
+                <Route path="ledger" element={<AdminLedger />} />
+                <Route path="reconciliation" element={<AdminReconciliation />} />
+                <Route path="staff" element={<AdminStaff />} />
+                <Route path="audit" element={<AdminAudit />} />
               </Route>
             </Route>
           </Routes>

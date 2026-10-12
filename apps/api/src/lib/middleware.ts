@@ -1,7 +1,8 @@
 import { createMiddleware } from "hono/factory";
 import { createDbClient } from "@surescore/db";
 import { verifySession, AuthError } from "./auth.js";
-import type { AppEnv } from "../types.js";
+import { hasPermission, isStaffRole, type Permission } from "@surescore/shared";
+import type { AppContext, AppEnv } from "../types.js";
 
 /** Requires a valid bearer session token, and sets `userId` in context. */
 export const requireAuth = createMiddleware<AppEnv>(async (context, next) => {
@@ -23,14 +24,29 @@ export const requireAuth = createMiddleware<AppEnv>(async (context, next) => {
 	await next();
 });
 
-/** Requires an admin user. Mount after `requireAuth`. */
-export const requireAdmin = createMiddleware<AppEnv>(async (context, next) => {
+/** The caller's current role, read from the database once per request so demotions apply immediately. */
+async function roleOf(context: AppContext): Promise<string | undefined> {
+	const cached = context.get("role");
+	if (cached) return cached;
 	const user = await createDbClient(context.env.DB).user.findUnique({
 		where: { id: context.get("userId") },
 		select: { role: true },
 	});
-	if (user?.role !== "admin") {
-		return context.json({ error: "Admin access required." }, 403);
-	}
+	if (user) context.set("role", user.role);
+	return user?.role;
+}
+
+/** Requires a back-office user (staff or admin). Mount after `requireAuth`. */
+export const requireStaff = createMiddleware<AppEnv>(async (context, next) => {
+	if (!isStaffRole(await roleOf(context))) return context.json({ error: "Staff access required." }, 403);
 	await next();
 });
+
+/** Requires the role of the caller to grant `permission`. Mount after `requireAuth`. */
+export const requirePermission = (permission: Permission) =>
+	createMiddleware<AppEnv>(async (context, next) => {
+		if (!hasPermission(await roleOf(context), permission)) {
+			return context.json({ error: `Missing permission: ${permission}.` }, 403);
+		}
+		await next();
+	});

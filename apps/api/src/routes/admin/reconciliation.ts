@@ -2,9 +2,12 @@ import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
 import { AdminPotService } from "../../lib/admin-pots.js";
 import { ReconciliationService } from "../../lib/reconciliation-service.js";
+import { recordAudit } from "../../lib/audit.js";
+import { createDbClient } from "@surescore/db";
 import { trackJob } from "../../lib/job-runs.js";
+import { pageQuery } from "../../lib/pagination.js";
 import type { AppContext } from "../../types.js";
-import { okResponse, pageQuery, reasonSchema } from "./schema.js";
+import { okResponse, reasonSchema } from "./schema.js";
 
 const service = (c: AppContext) => new ReconciliationService(c.env.DB, new AdminPotService(c.env));
 
@@ -34,15 +37,16 @@ export class RunReconciliationEndpoint extends OpenAPIRoute {
 	schema = {
 		tags: ["Admin"],
 		summary: "Run reconciliation now",
-		request: { body: contentJson(z.object({ days: z.number().int().min(1).max(365).optional() })) },
+		request: { body: contentJson(z.object({ days: z.number().int().min(1).max(365).optional(), reason: reasonSchema })) },
 		responses: okResponse("Run result"),
 	};
 
 	async handle(c: AppContext) {
 		const { body } = await this.getValidatedData<typeof this.schema>();
+		await recordAudit(createDbClient(c.env.DB), c.get("userId"), "reconciliation.run", body.reason);
 		let result: Awaited<ReturnType<ReconciliationService["run"]>> | undefined;
 		await trackJob(c.env.DB, "reconciliation", "finance", async () => {
-			result = await service(c).run(body);
+			result = await service(c).run({ days: body.days });
 		});
 		return c.json(result ?? { error: "Reconciliation failed; see job failures." }, result ? 200 : 500);
 	}

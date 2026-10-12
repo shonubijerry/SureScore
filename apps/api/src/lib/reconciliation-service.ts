@@ -13,7 +13,8 @@ import {
 	type ReconLedgerGroup,
 	type ReconPot,
 } from "@surescore/shared";
-import { inChunks, toPage } from "./chunk.js";
+import { inChunks } from "./chunk.js";
+import { pageArgs, toPage } from "./pagination.js";
 import { fail } from "./pot-service.js";
 import type { AdminPotService } from "./admin-pots.js";
 
@@ -119,12 +120,11 @@ export class ReconciliationService {
 		};
 	}
 
-	async findings({ status, limit, cursor }: { status: string; limit: number; cursor?: string }) {
+	async findings({ status, limit, cursor }: { status: string; limit?: number; cursor?: string }) {
 		const rows = await this.db.reconciliationFinding.findMany({
 			where: { status },
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-			take: limit + 1,
-			...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+			...pageArgs({ limit, cursor }),
 		});
 		return toPage(rows, limit);
 	}
@@ -163,21 +163,21 @@ export class ReconciliationService {
 		return new Set(rows.map((r) => participantKey(r.potId, r.userId)));
 	}
 
-	/** Payout accounts (bank + number) used by winners and at least one other user. */
+	/** Payout accounts (bank + number) used by winners and at least one other user, keyed `{hash}/{last4}` so no raw number is stored in findings. */
 	private async sharedAccounts(winnerIds: string[]) {
 		const mine = await inChunks(winnerIds, (ids) =>
-			this.db.payoutAccount.findMany({ where: { userId: { in: ids } }, select: { accountNumber: true, bankCode: true } }),
+			this.db.payoutAccount.findMany({ where: { userId: { in: ids }, accountNumberHash: { not: null } }, select: { accountNumberHash: true } }),
 		);
-		const numbers = [...new Set(mine.map((a) => a.accountNumber))];
-		const same = await inChunks(numbers, (chunk) =>
+		const hashes = [...new Set(mine.map((a) => a.accountNumberHash!))];
+		const same = await inChunks(hashes, (chunk) =>
 			this.db.payoutAccount.findMany({
-				where: { accountNumber: { in: chunk } },
-				select: { accountNumber: true, bankCode: true, userId: true },
+				where: { accountNumberHash: { in: chunk } },
+				select: { accountNumberHash: true, accountLast4: true, userId: true },
 			}),
 		);
 		const owners = new Map<string, Set<string>>();
 		for (const a of same) {
-			const key = `${a.bankCode ?? ""}/${a.accountNumber}`;
+			const key = `${a.accountNumberHash}/${a.accountLast4 ?? ""}`;
 			owners.set(key, (owners.get(key) ?? new Set()).add(a.userId));
 		}
 		return new Map([...owners].filter(([, users]) => users.size > 1).map(([key, users]) => [key, [...users]]));

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { requireAdmin } from "../src/lib/middleware";
+import { requireStaff, requirePermission } from "../src/lib/middleware";
 import type { AppEnv } from "../src/types";
 import { env } from "cloudflare:test";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -221,19 +221,21 @@ it("PotService.refundJob uses the stable refund idempotency key", () => {
 	expect(PotService.refundJob({ id: "p", potterId: "u", countryCode: "NG", currency: "NGN", prizeAmountMinorUnits: 1, fundingReference: null } as never, "cancelled").request.idempotencyKey).toBe("refund:p");
 });
 
-describe("requireAdmin", () => {
-	it("allows only users with the admin role", async () => {
+describe("role guards", () => {
+	it("lets staff view but not act, and admins do both", async () => {
 		await seed("Paid");
 		await db.user.update({ where: { id: "potter" }, data: { role: "admin" } });
-		const call = async (userId: string) => {
+		await db.user.update({ where: { id: "u1" }, data: { role: "staff" } });
+		const call = async (userId: string, permission: "pots.view" | "pots.override") => {
 			const app = new Hono<AppEnv>();
 			app.use("*", async (c, next) => (c.set("userId", userId), next()));
-			app.use("*", requireAdmin);
+			app.use("*", requireStaff, requirePermission(permission));
 			app.get("/", (c) => c.text("ok"));
-			return app.request("/", {}, env);
+			return (await app.request("/", {}, env)).status;
 		};
-		expect((await call("potter")).status).toBe(200);
-		expect((await call("u1")).status).toBe(403);
-		expect((await call("missing")).status).toBe(403);
+		expect(await call("potter", "pots.override")).toBe(200);
+		expect(await call("u1", "pots.view")).toBe(200);
+		expect(await call("u1", "pots.override")).toBe(403);
+		expect(await call("missing", "pots.view")).toBe(403);
 	});
 });

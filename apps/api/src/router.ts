@@ -1,6 +1,8 @@
+import { log } from './lib/logger.js'
 import { fromHono } from 'chanfana'
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
+import { secureHeaders } from 'hono/secure-headers'
 import { d1BindingName, databaseProvider } from '@surescore/db'
 import { appName, type HealthResponse } from '@surescore/shared'
 import { adminRoutes } from './routes/admin/index.js'
@@ -15,6 +17,13 @@ import { walletRoutes } from './routes/wallet/index.js'
 import type { AppEnv } from './types.js'
 
 const app = new Hono<AppEnv>()
+// Security headers (HSTS etc.) everywhere; API responses may hold payout or account data, so never cache them.
+app.use('*', secureHeaders())
+app.use('/api/*', async (c, next) => {
+	await next()
+	c.header('Cache-Control', 'no-store')
+})
+
 const openapi = fromHono(app, {
 	docs_url: '/api/v1/docs',
 	openapi_url: '/api/v1/openapi.json',
@@ -41,7 +50,7 @@ function healthResponse(database: D1Database | undefined) {
 }
 
 app.onError((err, c) => {
-	console.error('Global error handler caught:', err)
+	log.error("http", "unhandled", { path: c.req.path, error: err })
 
 	if (err instanceof HTTPException) {
 		return err.getResponse()

@@ -3,6 +3,7 @@
 // "Paystack" exists. Only the internal `PaymentProvider` contract is exposed.
 
 import type {
+  CreateRecipientRequest,
   FundPotRequest,
   PaymentProvider,
   PaymentResult,
@@ -123,14 +124,29 @@ export class PaystackProvider implements PaymentProvider {
     };
   }
 
+  async createRecipient(request: CreateRecipientRequest): Promise<string> {
+    const { data } = await this.request<{ recipient_code: string }>("/transferrecipient", {
+      method: "POST",
+      body: JSON.stringify({
+        type: "nuban",
+        name: request.accountName,
+        account_number: request.accountNumber,
+        bank_code: request.bankCode,
+        currency: request.currency,
+      }),
+    });
+    return data.recipient_code;
+  }
+
   async payout(request: PayoutRequest): Promise<PaymentResult> {
+    if (!request.recipientCode) throw new Error("Paystack payout requires a recipient code.");
     const { data } = await this.request<PaystackTransferData>("/transfer", {
       method: "POST",
       body: JSON.stringify({
         source: "balance",
         amount: request.amountMinorUnits,
         currency: request.currency,
-        recipient: request.payoutAccountId,
+        recipient: request.recipientCode,
         reference: request.idempotencyKey,
       }),
     });

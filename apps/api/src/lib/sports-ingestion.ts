@@ -3,6 +3,7 @@
 // so a provider outage never reaches core logic as anything other than a
 // "keep serving the last cached data" outcome.
 
+import { log } from "./logger.js"
 import { computeFreshness, getSportsProviderConfig, type SportsProvider } from "@surescore/shared";
 import type { SportsEventCacheRecord, SportsEventCacheStore } from "./sports-cache-repository.js";
 
@@ -35,7 +36,7 @@ async function forEachLeague(
       await store.upsertMany(records);
       refreshedEvents += records.length;
     } catch (error) {
-			console.log(error);
+			log.error("sync", "league_failed", { league, error });
       // Fallback (T4.6): a failed league fetch leaves previously cached rows
       // untouched; readers fall back to that cached data (flagged stale by
       // computeFreshness once it ages out) instead of the job crashing.

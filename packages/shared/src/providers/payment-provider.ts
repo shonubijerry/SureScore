@@ -34,7 +34,16 @@ export interface PayoutRequest {
   currency: string;
   amountMinorUnits: number;
   payoutAccountId: string;
+  /** Provider recipient reference; resolved via `createRecipient` before the transfer is sent. */
+  recipientCode?: string;
   idempotencyKey: string;
+}
+
+export interface CreateRecipientRequest {
+  accountName: string;
+  accountNumber: string;
+  bankCode: string;
+  currency: string;
 }
 
 export interface RetryPayoutRequest {
@@ -66,6 +75,8 @@ export interface PaymentProvider {
   readonly id: string;
   fund(request: FundPotRequest): Promise<PaymentResult>;
   refund(request: RefundRequest): Promise<PaymentResult>;
+  /** Registers bank details with the provider; returns the reusable recipient reference. */
+  createRecipient(request: CreateRecipientRequest): Promise<string>;
   payout(request: PayoutRequest): Promise<PaymentResult>;
   retryPayout(request: RetryPayoutRequest): Promise<PaymentResult>;
   verify(request: VerifyPaymentRequest): Promise<PaymentResult>;

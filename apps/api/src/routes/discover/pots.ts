@@ -1,13 +1,13 @@
 import { OpenAPIRoute, NotFoundException, contentJson } from "chanfana";
 import { z } from "zod";
 import { createDbClient } from "@surescore/db";
+import { pageArgs, pageQuery, toPage } from "../../lib/pagination.js";
 import type { AppContext } from "../../types.js";
 import { potCard, potCardInclude } from "../../lib/views.js";
 import { potCardSchema } from "../pots/schema.js";
 
 // Pots people can still browse; Draft (unfunded) and settled/cancelled pots stay out of discovery.
 const DISCOVERABLE_STATUSES = ["Open", "Locked", "Live"];
-const MAX_RESULTS = 50;
 
 export class ListPublicPotsEndpoint extends OpenAPIRoute {
 	schema = {
@@ -19,10 +19,11 @@ export class ListPublicPotsEndpoint extends OpenAPIRoute {
 				to: z.iso.datetime().optional().describe("Kickoff on or before (ISO datetime)"),
 				eventId: z.string().optional().describe("Only pots for this match cache id"),
 				countryCode: z.string().length(2).optional(),
+				...pageQuery,
 			}),
 		},
 		responses: {
-			"200": { description: "Pots by kickoff", ...contentJson(z.object({ pots: z.array(potCardSchema) })) },
+			"200": { description: "Pots by kickoff", ...contentJson(z.object({ pots: z.array(potCardSchema), nextCursor: z.string().nullable() })) },
 		},
 	};
 
@@ -32,7 +33,7 @@ export class ListPublicPotsEndpoint extends OpenAPIRoute {
 			...(query.from && { gte: new Date(query.from) }),
 			...(query.to && { lte: new Date(query.to) }),
 		};
-		const pots = await createDbClient(c.env.DB).pot.findMany({
+		const rows = await createDbClient(c.env.DB).pot.findMany({
 			where: {
 				status: { in: DISCOVERABLE_STATUSES },
 				...(query.eventId && { eventId: query.eventId }),
@@ -40,11 +41,12 @@ export class ListPublicPotsEndpoint extends OpenAPIRoute {
 				...(Object.keys(kickoff).length && { event: { kickoffTimeUtc: kickoff } }),
 			},
 			include: potCardInclude,
-			orderBy: [{ event: { kickoffTimeUtc: "asc" } }, { createdAt: "desc" }],
-			take: MAX_RESULTS,
+			orderBy: [{ event: { kickoffTimeUtc: "asc" } }, { createdAt: "desc" }, { id: "asc" }],
+			...pageArgs(query),
 		});
+		const { items, nextCursor } = toPage(rows, query.limit);
 		const now = new Date();
-		return c.json({ pots: pots.map((pot) => potCard(pot, now)) });
+		return c.json({ pots: items.map((pot) => potCard(pot, now)), nextCursor });
 	}
 }
 

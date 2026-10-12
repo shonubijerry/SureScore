@@ -2,8 +2,9 @@ import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
 import { potStatuses, MAX_PREDICTED_GOALS, MAX_FIRST_GOAL_MINUTE } from "@surescore/shared";
 import { AdminPotService } from "../../lib/admin-pots.js";
+import { pageQuery } from "../../lib/pagination.js";
 import type { AppContext } from "../../types.js";
-import { okResponse, pageQuery, potIdParams, reasonSchema } from "./schema.js";
+import { okResponse, potIdParams, reasonSchema } from "./schema.js";
 
 const reasonBody = contentJson(z.object({ reason: reasonSchema }));
 

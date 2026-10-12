@@ -6,7 +6,7 @@
 import { expect } from "vitest";
 import type { PaymentProvider, PaymentResult } from "@surescore/shared";
 
-const paymentMethods = ["fund", "refund", "payout", "retryPayout", "verify"] as const;
+const paymentMethods = ["fund", "refund", "createRecipient", "payout", "retryPayout", "verify"] as const;
 
 export function assertImplementsPaymentProviderContract(provider: PaymentProvider): void {
   expect(typeof provider.id).toBe("string");

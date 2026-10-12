@@ -1,5 +1,6 @@
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { CalendarDays, Home, LogIn, Shield, Trophy, Wallet } from 'lucide-react'
+import { isStaffRole } from '@surescore/shared'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '../lib/auth'
 import { Loading } from './bits'
@@ -21,7 +22,7 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 /** Top bar on wide screens, fixed bottom tab bar on phones. */
 export function Layout() {
   const { user, logout } = useAuth()
-  const nav = user?.role === 'admin' ? [...NAV, ADMIN_NAV] : NAV
+  const nav = isStaffRole(user?.role) ? [...NAV, ADMIN_NAV] : NAV
   return (
     <div className="min-h-screen pb-20 md:pb-0">
       <header className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur">

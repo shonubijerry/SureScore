@@ -72,7 +72,11 @@ model PayoutAccount {
   countryCode   String
   provider      String
   accountName   String
-  accountNumber String
+  accountNumber String // AES-GCM ciphertext (see apps/api secure-data); never the raw number
+  accountNumberHash String? // keyed hash, for duplicate-account detection without decrypting
+  accountLast4  String?
+  providerRecipientCode String? // provider-issued payout recipient (e.g. Paystack RCP_...); reset when bank details change
+  recipientProvider     String? // provider id that issued providerRecipientCode
   bankCode      String?
   isDefault     Boolean  @default(false)
   isVerified    Boolean  @default(false)
@@ -82,7 +86,7 @@ model PayoutAccount {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([accountNumber])
+  @@index([accountNumberHash])
 }
 
 // Normalized, cached sports events (see @surescore/shared SportsEvent). This
@@ -187,11 +191,12 @@ model PotStateTransition {
 }
 
 // Append-only trail of every admin action (retries, disputes, overrides,
-// notes, reconciliation reviews). `reason` is mandatory for all of them.
+// notes, reconciliation reviews, staff changes, payout-detail changes).
+// `reason` is mandatory for all of them.
 model AdminAuditLog {
   id        String   @id @default(cuid())
   actorId   String
-  action    String // transfer.retry | dispute.open | dispute.resolve | settlement.override | note | reconciliation.resolve
+  action    String // see AUDIT_ACTIONS in apps/api/src/lib/audit.ts
   potId     String?
   subject   String? // idempotency key, finding id, ...
   reason    String
@@ -199,6 +204,7 @@ model AdminAuditLog {
 
   @@index([potId, createdAt])
   @@index([createdAt])
+  @@index([actorId, createdAt])
 }
 
 // Admin-supplied regulation result used instead of the cached match when the

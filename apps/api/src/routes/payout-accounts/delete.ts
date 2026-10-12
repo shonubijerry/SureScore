@@ -1,6 +1,7 @@
 import { OpenAPIRoute, NotFoundException, contentJson } from "chanfana";
 import { z } from "zod";
 import { createDbClient } from "@surescore/db";
+import { recordAudit } from "../../lib/audit.js";
 import type { AppContext } from "../../types.js";
 
 export class DeletePayoutAccountEndpoint extends OpenAPIRoute {
@@ -27,6 +28,7 @@ export class DeletePayoutAccountEndpoint extends OpenAPIRoute {
 		}
 
 		await db.payoutAccount.delete({ where: { id: params.id } });
+		await recordAudit(db, userId, "payout_account.delete", "user-initiated", { subject: params.id });
 		return c.json({ ok: true });
 	}
 }

@@ -9,11 +9,11 @@ import { fail, PotService } from "./pot-service.js";
 import { attemptOf, latestPerAction, pickPayoutAccount } from "./settlement-service.js";
 import { enqueueTransfer } from "./transfer-queue.js";
 import { inChunks } from "./chunk.js";
+import { PAGE_DEFAULT, PAGE_MAX, pageArgs } from "./pagination.js";
 import type { LedgerStatus, LedgerType } from "./ledger.js";
 import type { AdminPotService } from "./admin-pots.js";
 
 type TransferType = Extract<LedgerType, "payout" | "refund">;
-const PAGE_MAX = 100;
 
 export class AdminTransferService {
 	private readonly db;
@@ -26,13 +26,12 @@ export class AdminTransferService {
 	}
 
 	/** Actions of `type` whose current (latest-attempt) state is `status`, newest first. */
-	async queue({ type, status, limit = 50, cursor }: { type: TransferType; status: LedgerStatus; limit?: number; cursor?: string }) {
+	async queue({ type, status, limit = PAGE_DEFAULT, cursor }: { type: TransferType; status: LedgerStatus; limit?: number; cursor?: string }) {
 		const take = Math.min(limit, PAGE_MAX);
 		const candidates = await this.db.ledgerEntry.findMany({
 			where: { type, status },
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-			take: take + 1,
-			...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+			...pageArgs({ limit: take, cursor }),
 		});
 		const hasMore = candidates.length > take;
 		const page = candidates.slice(0, take);

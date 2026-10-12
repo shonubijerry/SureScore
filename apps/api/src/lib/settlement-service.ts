@@ -5,6 +5,7 @@
 // transition, and every payout job carries a stable idempotency key that the
 // queue consumer checks against the immutable ledger.
 
+import { log } from "./logger.js"
 import { HTTPException } from "hono/http-exception";
 import { createDbClient } from "@surescore/db";
 import {
@@ -67,7 +68,7 @@ export class SettlementService {
 			try {
 				await this.settle(id);
 			} catch (error) {
-				console.error("Settlement failed, will retry on next run:", id, error);
+				log.error("settlement", "failed", { potId: id, error });
 			}
 		}
 	}
