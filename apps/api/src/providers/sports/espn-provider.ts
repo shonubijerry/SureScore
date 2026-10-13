@@ -15,6 +15,7 @@ export interface EspnSportsProviderConfig {
 
 interface EspnCompetitor {
 	homeAway: 'home' | 'away'
+	id?: string
 	team: { displayName: string }
 	score?: string
 }
@@ -119,6 +120,8 @@ function normalizeEvent(league: string, event: EspnEvent): SportsEvent {
 		league,
 		homeTeam: home?.team.displayName ?? 'Unknown',
 		awayTeam: away?.team.displayName ?? 'Unknown',
+		homeTeamId: home?.id ?? null,
+		awayTeamId: away?.id ?? null,
 		kickoffTimeUtc: event.date,
 		status,
 		homeScore: toScore(home?.score),

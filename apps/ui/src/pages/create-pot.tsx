@@ -61,7 +61,12 @@ export default function CreatePotPage() {
     setError(null)
     try {
       const result = await api<{ pot: PotCard; checkoutUrl?: string }>('/api/pots', {
-        body: { eventId: m.cacheId, prizeAmountMinorUnits: prize, winnerCount: winners },
+        body: {
+          eventId: m.cacheId,
+          prizeAmountMinorUnits: prize,
+          winnerCount: winners,
+          callbackUrl: `${window.location.origin}/my-pots`,
+        },
       })
       if (result.checkoutUrl) window.location.assign(result.checkoutUrl)
       else navigate('/my-pots')

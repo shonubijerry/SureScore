@@ -33,7 +33,7 @@ function MyMatches() {
 }
 
 function UpcomingMatches() {
-  const query = useApi<{ matches: Match[] }>('/api/sports/upcoming?limit=10')
+  const query = useApi<{ matches: Match[] }>('/api/sports/matches/upcoming?limit=10')
   const list = { ...query, data: query.data?.matches ?? null }
 
   return (

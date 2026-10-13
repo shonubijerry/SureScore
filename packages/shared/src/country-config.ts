@@ -21,6 +21,8 @@ export interface SportsProviderConfig {
   id: string;
   name: string;
   leagues?: string[];
+  /** Team logo URL template; `{teamId}` is replaced with the provider team id. */
+  teamLogoUrl?: string;
 }
 
 export const countryConfigs: CountryConfig[] = [
@@ -46,6 +48,7 @@ export const sportsProviderConfigs: SportsProviderConfig[] = [
   {
     id: "espn",
     name: "ESPN Soccer Scoreboard",
+    teamLogoUrl: "https://a.espncdn.com/i/teamlogos/soccer/500/{teamId}.png",
     leagues: [
       "eng.1",
       "esp.1",
@@ -125,4 +128,10 @@ export function resolveSportsProviderForCountry(
     );
   }
   return provider;
+}
+
+/** Logo URL for a provider team id, or null when the provider has no logo template or the id is unknown. */
+export function teamLogoUrl(providerId: string, teamId?: string | null): string | null {
+  const template = getSportsProviderConfig(providerId)?.teamLogoUrl;
+  return template && teamId ? template.replace("{teamId}", encodeURIComponent(teamId)) : null;
 }

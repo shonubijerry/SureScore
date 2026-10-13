@@ -99,6 +99,8 @@ model SportsEventCache {
   league                String
   homeTeam              String
   awayTeam              String
+  homeTeamId            String? // provider team id; resolves to a logo via the provider config
+  awayTeamId            String?
   kickoffTimeUtc        DateTime
   status                String // scheduled | live | finished | postponed | abandoned
   homeScore             Int?

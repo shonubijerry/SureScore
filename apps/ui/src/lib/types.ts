@@ -15,6 +15,8 @@ export interface Match {
   league: string
   homeTeam: string
   awayTeam: string
+  homeTeamLogoUrl: string | null
+  awayTeamLogoUrl: string | null
   kickoffTimeUtc: string
   status: MatchStatus
   homeScore: number | null

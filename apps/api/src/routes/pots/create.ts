@@ -15,6 +15,7 @@ export class CreatePotEndpoint extends OpenAPIRoute {
 					eventId: z.string().min(1),
 					prizeAmountMinorUnits: z.number().int().positive(),
 					winnerCount: z.number().int().min(MIN_WINNER_COUNT).max(MAX_WINNER_COUNT),
+					callbackUrl: z.string().url().optional(),
 				}),
 			),
 		},

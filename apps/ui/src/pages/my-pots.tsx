@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { ListState, Section } from '../components/bits'
 import { PotCard } from '../components/pot-card'
@@ -37,8 +37,45 @@ function VerifyFunding({ pot, onDone }: { pot: Pot; onDone: () => void }) {
 }
 
 export default function MyPotsPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const verifyPotId = searchParams.get('verifyPotId')
+  const [autoVerifying, setAutoVerifying] = useState(Boolean(verifyPotId))
+  const [autoVerifyStatus, setAutoVerifyStatus] = useState<{ isError: boolean; message: string } | null>(null)
+
   const query = useApi<{ pots: Pot[] }>('/api/pots')
   const list = { ...query, data: query.data?.pots ?? null }
+
+  useEffect(() => {
+    if (!verifyPotId) return
+
+    let active = true
+    setAutoVerifying(true)
+    setAutoVerifyStatus(null)
+
+    api(`/api/pots/${verifyPotId}/verify-funding`, { method: 'POST' })
+      .then(() => {
+        if (!active) return
+        setAutoVerifyStatus({ isError: false, message: 'Payment confirmed! Your pot is now open.' })
+        query.reload()
+      })
+      .catch((err: Error) => {
+        if (!active) return
+        setAutoVerifyStatus({ isError: true, message: err.message || 'Payment verification failed. You can retry below.' })
+      })
+      .finally(() => {
+        if (!active) return
+        setAutoVerifying(false)
+        const next = new URLSearchParams(searchParams)
+        next.delete('verifyPotId')
+        next.delete('reference')
+        next.delete('trxref')
+        setSearchParams(next, { replace: true })
+      })
+
+    return () => {
+      active = false
+    }
+  }, [verifyPotId])
 
   return (
     <Section
@@ -49,6 +86,24 @@ export default function MyPotsPage() {
         </Link>
       }
     >
+      {autoVerifying && (
+        <div className="rounded-2xl border border-primary/40 bg-primary/10 p-4 text-sm font-medium text-primary">
+          Verifying payment with payment provider…
+        </div>
+      )}
+      {autoVerifyStatus && !autoVerifying && (
+        <div
+          role="status"
+          className={`rounded-2xl border p-4 text-sm font-medium ${
+            autoVerifyStatus.isError
+              ? 'border-destructive/40 bg-destructive/10 text-destructive'
+              : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+          }`}
+        >
+          {autoVerifyStatus.message}
+        </div>
+      )}
+
       <ListState query={list} empty="You haven't created a pot yet. Choose a match to get started.">
         {(pots) =>
           pots.map((pot) =>

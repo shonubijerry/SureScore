@@ -6,11 +6,14 @@
 export interface FundPotRequest {
   potId: string;
   userId: string;
+  email?: string;
   countryCode: string;
   currency: string;
   amountMinorUnits: number;
   /** Caller-supplied key so retried calls do not double-charge/double-credit. */
   idempotencyKey: string;
+  /** Optional URL where the payment provider redirects after payment. */
+  callbackUrl?: string;
 }
 
 export type RefundReason = "postponed" | "abandoned" | "cancelled";

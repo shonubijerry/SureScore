@@ -32,6 +32,8 @@ export function toRecord(row: {
 	league: string
 	homeTeam: string
 	awayTeam: string
+	homeTeamId: string | null
+	awayTeamId: string | null
 	kickoffTimeUtc: Date
 	status: string
 	homeScore: number | null
@@ -49,6 +51,8 @@ export function toRecord(row: {
 		league: row.league,
 		homeTeam: row.homeTeam,
 		awayTeam: row.awayTeam,
+		homeTeamId: row.homeTeamId,
+		awayTeamId: row.awayTeamId,
 		kickoffTimeUtc: row.kickoffTimeUtc.toISOString(),
 		status: row.status as MatchStatus,
 		homeScore: row.homeScore,
@@ -80,6 +84,8 @@ export class PrismaSportsEventCacheStore implements SportsEventCacheStore {
 					league: event.league,
 					homeTeam: event.homeTeam,
 					awayTeam: event.awayTeam,
+					homeTeamId: event.homeTeamId ?? undefined,
+					awayTeamId: event.awayTeamId ?? undefined,
 					kickoffTimeUtc: new Date(event.kickoffTimeUtc),
 					status: event.status,
 					homeScore: event.homeScore,

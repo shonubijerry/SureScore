@@ -90,8 +90,10 @@ export class PaystackProvider implements PaymentProvider {
       method: "POST",
       body: JSON.stringify({
         amount: request.amountMinorUnits,
+        email: request.email,
         currency: request.currency,
         reference: request.idempotencyKey,
+        ...(request.callbackUrl && { callback_url: request.callbackUrl }),
         metadata: { potId: request.potId, userId: request.userId, countryCode: request.countryCode },
       }),
     });

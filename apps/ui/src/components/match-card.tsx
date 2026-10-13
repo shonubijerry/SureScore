@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { formatKickoff, hasScore, isLive, matchStatusLabel } from '../lib/format'
+import { formatKickoff, hasScore, isLive, leagueName, matchStatusLabel } from '../lib/format'
 import type { Match } from '../lib/types'
 
 /** Score while in play or finished; "vs" before kickoff. */
@@ -21,17 +21,39 @@ export function MatchStatusBadge({ match }: { match: Match }) {
   )
 }
 
+/** Logo above the name; lazy-loaded and decoded off-thread so it never blocks first paint. */
+function TeamName({ name, logoUrl, large }: { name: string; logoUrl: string | null; large?: boolean }) {
+  const size = large ? 'size-14' : 'size-10'
+  return (
+    <span className="flex flex-col items-center gap-1 text-center">
+      {logoUrl && (
+        <img
+          src={logoUrl}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          width={64}
+          height={64}
+          className={`${size} object-contain`}
+          onError={(e) => (e.currentTarget.hidden = true)}
+        />
+      )}
+      <span className={`break-words font-semibold ${large ? 'text-lg' : ''}`}>{name}</span>
+    </span>
+  )
+}
+
 export function MatchHeader({ match, large }: { match: Match; large?: boolean }) {
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-        <span className="uppercase tracking-wide">{match.league}</span>
+        <span className="uppercase tracking-wide">{leagueName(match.league)}</span>
         <span>{formatKickoff(match.kickoffTimeUtc)}</span>
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <span className={`break-words text-right font-semibold ${large ? 'text-lg' : ''}`}>{match.homeTeam}</span>
+        <TeamName name={match.homeTeam} logoUrl={match.homeTeamLogoUrl} large={large} />
         <MatchScore match={match} large={large} />
-        <span className={`break-words font-semibold ${large ? 'text-lg' : ''}`}>{match.awayTeam}</span>
+        <TeamName name={match.awayTeam} logoUrl={match.awayTeamLogoUrl} large={large} />
       </div>
       <MatchStatusBadge match={match} />
     </div>

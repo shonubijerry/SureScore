@@ -8,6 +8,8 @@ export const sportsEventSchema = z.object({
 	league: z.string(),
 	homeTeam: z.string(),
 	awayTeam: z.string(),
+	homeTeamLogoUrl: z.string().nullable(),
+	awayTeamLogoUrl: z.string().nullable(),
 	kickoffTimeUtc: z.string(),
 	status: z.enum(matchStatuses),
 	homeScore: z.number().nullable(),

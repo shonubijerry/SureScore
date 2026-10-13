@@ -48,6 +48,36 @@ describe("PaystackProvider", () => {
     );
   });
 
+  it("fund() includes callback_url when callbackUrl is provided in request", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse({
+        status: true,
+        message: "ok",
+        data: { reference: "ref_cb", status: "success", amount: 20000, currency: "NGN", authorization_url: "https://paystack.com/checkout/123" },
+      }),
+    );
+    const provider = new PaystackProvider({ secretKey: "sk_test", fetchImpl });
+
+    const result = await provider.fund({
+      potId: "pot_cb",
+      userId: "user_cb",
+      countryCode: "NG",
+      currency: "NGN",
+      amountMinorUnits: 20000,
+      idempotencyKey: "idem_cb",
+      callbackUrl: "https://example.com/my-pots?verifyPotId=pot_cb",
+    });
+
+    expect(result.checkoutUrl).toBe("https://paystack.com/checkout/123");
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://api.paystack.co/transaction/initialize",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.stringContaining('"callback_url":"https://example.com/my-pots?verifyPotId=pot_cb"'),
+      }),
+    );
+  });
+
   it("verify() maps a pending Paystack status to the internal pending status", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       jsonResponse({

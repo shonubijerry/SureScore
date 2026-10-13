@@ -41,3 +41,18 @@ export const startOfDayIso = (date: string) => new Date(`${date}T00:00:00`).toIS
 export const endOfDayIso = (date: string) => new Date(`${date}T23:59:59.999`).toISOString()
 export const toDateInput = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+
+// Display names for provider league codes; unknown codes fall back to the raw code.
+const LEAGUE_NAMES: Record<string, string> = {
+  'eng.1': 'English Premier League',
+  'esp.1': 'La Liga',
+  'ger.1': 'Bundesliga',
+  'ita.1': 'Serie A',
+  'fra.1': 'Ligue 1',
+  'uefa.champions': 'UEFA Champions League',
+  'uefa.europa': 'UEFA Europa League',
+  'uefa.europa.conf': 'UEFA Conference League',
+  'nga.1': 'Nigeria Premier League',
+}
+
+export const leagueName = (code: string) => LEAGUE_NAMES[code] ?? code

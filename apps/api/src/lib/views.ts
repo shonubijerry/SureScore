@@ -1,6 +1,6 @@
 // Shared response shapes so every route exposes matches and pots identically.
 
-import { computeFreshness, predictionLockTime } from "@surescore/shared";
+import { computeFreshness, predictionLockTime, teamLogoUrl } from "@surescore/shared";
 import type { Pot, SportsEventCache } from "@surescore/db";
 import { toRecord, type SportsEventCacheRecord } from "./sports-cache-repository.js";
 
@@ -8,6 +8,8 @@ import { toRecord, type SportsEventCacheRecord } from "./sports-cache-repository
 export const matchView = (record: SportsEventCacheRecord, now = new Date()) => ({
 	...record,
 	cacheId: `${record.provider}:${record.id}`,
+	homeTeamLogoUrl: teamLogoUrl(record.provider, record.homeTeamId),
+	awayTeamLogoUrl: teamLogoUrl(record.provider, record.awayTeamId),
 	freshness: computeFreshness(record.status, record.lastRefreshedAt, now),
 });
 

@@ -75,7 +75,7 @@ export function assertHasCompletedPayoutDetails(
 
   if (!hasCompletedRecord) {
     throw new EligibilityError(
-      `User must complete payout details for "${normalizedCountry}" before making their first prediction.`,
+      `You must complete your payout details before making first prediction.`,
     );
   }
 }

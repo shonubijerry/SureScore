@@ -20,6 +20,9 @@ export interface SportsEvent {
   league: string;
   homeTeam: string;
   awayTeam: string;
+  /** Provider team ids; null when the provider does not supply them. */
+  homeTeamId?: string | null;
+  awayTeamId?: string | null;
   kickoffTimeUtc: string;
   status: MatchStatus;
   homeScore: number | null;
