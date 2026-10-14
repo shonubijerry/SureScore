@@ -20,8 +20,8 @@ export class ListPayoutAccountsEndpoint extends OpenAPIRoute {
 	async handle(c: AppContext) {
 		const db = createDbClient(c.env.DB);
 		const accounts = await db.payoutAccount.findMany({
-			where: { userId: c.get("userId") },
-			orderBy: { createdAt: "asc" },
+			where: { userId: c.get("userId"), deletedAt: null },
+			orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
 		});
 		return c.json({ payoutAccounts: accounts.map(toPublicAccount) });
 	}

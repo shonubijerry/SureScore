@@ -1,5 +1,5 @@
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
-import { CalendarDays, CircleHelp, Home, LogIn, Shield, Trophy, Wallet } from 'lucide-react'
+import { CalendarDays, CircleHelp, Home, LogIn, Shield, Trophy, UserRound, Wallet } from 'lucide-react'
 import { isStaffRole } from '@surescore/shared'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '../lib/auth'
@@ -41,9 +41,19 @@ export function Layout() {
             <CircleHelp aria-hidden className="size-5" />
           </Link>
           {user ? (
-            <Button variant="outline" size="sm" onClick={logout}>
-              Sign out
-            </Button>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/profile"
+                aria-label="Profile"
+                className="flex items-center gap-1.5 rounded-xl border border-border px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted"
+              >
+                <UserRound className="size-3.5" />
+                <span className="hidden sm:inline">Profile</span>
+              </Link>
+              <Button variant="outline" size="sm" onClick={logout}>
+                Sign out
+              </Button>
+            </div>
           ) : (
             <Link to="/login" className="flex items-center gap-1 text-sm font-semibold">
               <LogIn aria-hidden className="size-4" /> Sign in

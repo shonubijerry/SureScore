@@ -49,11 +49,17 @@ function healthResponse(database: D1Database | undefined) {
 	return body
 }
 
-app.onError((err, c) => {
+app.onError(async (err, c) => {
 	log.error("http", "unhandled", { path: c.req.path, error: err })
 
 	if (err instanceof HTTPException) {
-		return err.getResponse()
+		const res = err.getResponse()
+		const contentType = res.headers.get("content-type")
+		if (contentType?.includes("application/json")) {
+			return res
+		}
+		const text = await res.text()
+		return c.json({ message: text || err.message, error: text || err.message }, err.status)
 	}
 
 	return c.json(

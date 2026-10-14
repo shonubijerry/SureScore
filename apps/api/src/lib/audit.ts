@@ -13,6 +13,7 @@ export const AUDIT_ACTIONS = [
 	"transfer.retry",
 	"reconciliation.run",
 	"reconciliation.resolve",
+	"sports.sync",
 	"staff.create",
 	"staff.role_change",
 	"payout_account.create",

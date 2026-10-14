@@ -21,6 +21,7 @@ export const permissions = [
   "staff.view",
   "staff.manage",
   "audit.view",
+  "sports.sync",
 ] as const;
 export type Permission = (typeof permissions)[number];
 

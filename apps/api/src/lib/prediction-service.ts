@@ -108,7 +108,14 @@ export class PredictionService {
 			where: { potId_userId: { potId, userId } },
 			include: { edits: { orderBy: { replacedAt: "asc" } }, pot: { include: { event: true } } },
 		});
-		if (!found) return fail(404, "You have not predicted this pot yet.");
+		if (!found) {
+			return {
+				prediction: null,
+				final: false,
+				breakdown: null,
+				edits: [],
+			};
+		}
 
 		const { pot, edits, ...prediction } = found;
 		return this.view(prediction, outcomeOf(pot.event), edits);
@@ -156,7 +163,7 @@ export class PredictionService {
 
 	/** A 0-0 pick has no first goal, so any minute is dropped. */
 	private values({ homeGoals, awayGoals, firstGoalMinute }: PredictionInput) {
-		return { homeGoals, awayGoals, firstGoalMinute: homeGoals + awayGoals === 0 ? null : (firstGoalMinute ?? null) };
+		return { homeGoals, awayGoals, firstGoalMinute: firstGoalMinute ?? null };
 	}
 
 	private view(
@@ -186,7 +193,7 @@ export class PredictionService {
 	private async assertEligible(userId: string, pot: Pot) {
 		const user = await this.db.user.findUniqueOrThrow({
 			where: { id: userId },
-			include: { payoutAccounts: true },
+			include: { payoutAccounts: { where: { deletedAt: null } } },
 		});
 		try {
 			assertSameCountryEligibility(user.countryCode, pot.countryCode);

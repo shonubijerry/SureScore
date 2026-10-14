@@ -35,3 +35,5 @@ export * from "./scoring.js";
 export * from "./settlement.js";
 export * from "./reconciliation.js";
 export * from "./roles.js";
+export * from "./name-match.js";
+export * from "./banks.js";

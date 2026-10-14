@@ -21,7 +21,7 @@ export const defaultFreshnessPolicy: FreshnessPolicy = {
 
 /** A finished/abandoned result is terminal and never goes stale once recorded. */
 function isTerminalStatus(status: MatchStatus): boolean {
-  return status === "full time" || status === "abandoned";
+  return status === "full time" || status === "finished" || status === "abandoned";
 }
 
 function isLiveStatus(status: MatchStatus): boolean {

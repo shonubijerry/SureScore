@@ -79,7 +79,10 @@ export class SettlementService {
 			where: { id: potId },
 			include: {
 				event: true,
-				predictions: { orderBy: { createdAt: "asc" }, include: { user: { include: { payoutAccounts: true } } } },
+				predictions: {
+					orderBy: { createdAt: "asc" },
+					include: { user: { include: { payoutAccounts: { where: { deletedAt: null } } } } },
+				},
 			},
 		});
 		if (!pot || pot.status !== "Settling") return false;

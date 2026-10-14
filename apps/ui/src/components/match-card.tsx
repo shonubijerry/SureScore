@@ -7,7 +7,8 @@ import type { Match } from '../lib/types'
 
 /** Score while in play or finished; "vs" before kickoff. */
 export function MatchScore({ match, large }: { match: Match; large?: boolean }) {
-  const text = hasScore(match) ? `${match.homeScore} – ${match.awayScore}` : 'vs'
+  const started = new Date(match.kickoffTimeUtc).getTime() <= Date.now() && match.status !== 'postponed'
+  const text = hasScore(match) ? `${match.homeScore} – ${match.awayScore}` : started ? '– –' : 'vs'
   return <span className={`font-black tabular-nums ${large ? 'text-3xl' : 'text-lg'}`}>{text}</span>
 }
 

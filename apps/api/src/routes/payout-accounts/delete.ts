@@ -23,11 +23,28 @@ export class DeletePayoutAccountEndpoint extends OpenAPIRoute {
 
 		const db = createDbClient(c.env.DB);
 		const account = await db.payoutAccount.findUnique({ where: { id: params.id } });
-		if (!account || account.userId !== userId) {
+		if (!account || account.userId !== userId || account.deletedAt !== null) {
 			throw new NotFoundException("Payout account not found.");
 		}
 
-		await db.payoutAccount.delete({ where: { id: params.id } });
+		await db.payoutAccount.update({
+			where: { id: params.id },
+			data: { deletedAt: new Date(), isDefault: false },
+		});
+
+		if (account.isDefault) {
+			const nextAccount = await db.payoutAccount.findFirst({
+				where: { userId, deletedAt: null, id: { not: params.id } },
+				orderBy: { createdAt: "desc" },
+			});
+			if (nextAccount) {
+				await db.payoutAccount.update({
+					where: { id: nextAccount.id },
+					data: { isDefault: true },
+				});
+			}
+		}
+
 		await recordAudit(db, userId, "payout_account.delete", "user-initiated", { subject: params.id });
 		return c.json({ ok: true });
 	}

@@ -15,4 +15,5 @@ export const payoutAccountRoutes = fromHono(hono);
 payoutAccountRoutes.get("/", ListPayoutAccountsEndpoint);
 payoutAccountRoutes.post("/", CreatePayoutAccountEndpoint);
 payoutAccountRoutes.patch("/:id", UpdatePayoutAccountEndpoint);
+payoutAccountRoutes.put("/:id", UpdatePayoutAccountEndpoint);
 payoutAccountRoutes.delete("/:id", DeletePayoutAccountEndpoint);

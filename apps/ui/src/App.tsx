@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Loading } from './components/bits'
 import { Layout, RequireAuth } from './components/layout'
 import { AuthProvider } from './lib/auth'
@@ -23,6 +23,7 @@ const AdminStaff = lazy(() => import('./pages/admin/staff'))
 const AdminAudit = lazy(() => import('./pages/admin/audit'))
 const FaqPage = lazy(() => import('./pages/faq'))
 const AuthPage = lazy(() => import('./pages/auth'))
+const ProfilePage = lazy(() => import('./pages/profile'))
 
 export default function App() {
   return (
@@ -41,6 +42,8 @@ export default function App() {
               <Route path="signup" element={<AuthPage mode="signup" />} />
               <Route element={<RequireAuth />}>
                 <Route path="my-pots" element={<MyPotsPage />} />
+                <Route path="profile" element={<ProfilePage />} />
+                <Route path="payout-accounts" element={<Navigate to="/profile" replace />} />
                 <Route path="pots/new" element={<CreatePotPage />} />
               </Route>
             </Route>

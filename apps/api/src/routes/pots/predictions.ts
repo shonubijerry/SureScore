@@ -21,7 +21,7 @@ const breakdownSchema = z.object({
 });
 
 const predictionView = z.object({
-	prediction: z.object({ id: z.string(), potId: z.string(), userId: z.string() }).passthrough(),
+	prediction: z.object({ id: z.string(), potId: z.string(), userId: z.string() }).passthrough().nullable(),
 	final: z.boolean(),
 	breakdown: breakdownSchema.nullable(),
 	edits: z.array(z.object({ homeGoals: z.number(), awayGoals: z.number() }).passthrough()),

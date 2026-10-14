@@ -1,9 +1,11 @@
-import { useParams } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Breakdown, Leaderboard as LeaderboardList } from '../components/leaderboard'
 import { Empty, ErrorNote, Loading, Section, SignInPrompt } from '../components/bits'
 import { MatchHeader } from '../components/match-card'
-import { PredictionForm } from '../components/prediction-form'
+import { PredictionForm, Stepper } from '../components/prediction-form'
 import { useAuth } from '../lib/auth'
 import { formatKickoff, formatMoney, isLocked } from '../lib/format'
 import type { Leaderboard, PotCard, PotSettlement, PredictionView } from '../lib/types'
@@ -21,12 +23,49 @@ function Fact({ label, value }: { label: string; value: string }) {
   )
 }
 
+function GuestPrediction({ pot }: { pot: PotCard }) {
+  const navigate = useNavigate()
+  const [home, setHome] = useState(0)
+  const [away, setAway] = useState(0)
+
+  const handlePredict = () => {
+    navigate('/signup', { state: { from: `/pots/${pot.id}` } })
+  }
+
+  return (
+    <Section title="Make your prediction">
+      <Card size="sm">
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Predict the score after 90 minutes. Extra time and penalties don't count.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <Stepper label={pot.match.homeTeam} value={home} onChange={setHome} />
+            <Stepper label={pot.match.awayTeam} value={away} onChange={setAway} />
+          </div>
+          <div className="space-y-2 pt-2">
+            <Button size="lg" className="h-12 w-full text-base" onClick={handlePredict}>
+              Predict – Sign up to lock in
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              Already have an account?{' '}
+              <Link to="/login" state={{ from: `/pots/${pot.id}` }} className="font-semibold underline">
+                Sign in
+              </Link>
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </Section>
+  )
+}
+
 function MyPrediction({ pot, canPredict }: { pot: PotCard; canPredict: boolean }) {
   const { user } = useAuth()
   const mine = useApi<PredictionView>(user ? `/api/pots/${pot.id}/predictions/me` : null, LIVE_REFRESH_MS)
   const existing = mine.data?.prediction ?? null
 
-  if (!user) return canPredict ? <SignInPrompt>Sign in to make your prediction.</SignInPrompt> : null
+  if (!user) return null
   if (mine.loading) return <Loading />
   if (mine.error && mine.error.status !== 404) return <ErrorNote error={mine.error} onRetry={mine.reload} />
 
@@ -152,7 +191,8 @@ export default function PotDetailPage() {
       {user && pot.status === 'Open' && !locked && user.countryCode !== pot.countryCode && (
         <Empty>This pot pays out in {pot.currency} and is only open to players in {pot.countryCode}.</Empty>
       )}
-      {!closed && <MyPrediction pot={pot} canPredict={canPredict} />}
+      {!closed && !user && pot.status === 'Open' && !locked && <GuestPrediction pot={pot} />}
+      {!closed && user && <MyPrediction pot={pot} canPredict={canPredict} />}
       {!closed && <Predictions pot={pot} locked={locked} />}
       <Settlement pot={pot} />
     </>

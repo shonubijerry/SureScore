@@ -81,9 +81,14 @@ export default function MyPotsPage() {
     <Section
       title="My pots"
       action={
-        <Link to="/matches" className="text-sm font-semibold">
-          + New pot
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link to="/profile" className="text-xs text-muted-foreground hover:text-foreground hover:underline">
+            Bank Accounts
+          </Link>
+          <Link to="/matches" className="text-sm font-semibold">
+            + New pot
+          </Link>
+        </div>
       }
     >
       {autoVerifying && (

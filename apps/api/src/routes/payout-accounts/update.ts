@@ -1,6 +1,8 @@
 import { OpenAPIRoute, NotFoundException, contentJson } from "chanfana";
 import { z } from "zod";
+import { HTTPException } from "hono/http-exception";
 import { createDbClient } from "@surescore/db";
+import { isNameMatching } from "@surescore/shared";
 import { recordAudit } from "../../lib/audit.js";
 import { sealAccountNumber, toPublicAccount, decrypt } from "../../lib/secure-data.js";
 import type { AppContext } from "../../types.js";
@@ -36,13 +38,25 @@ export class UpdatePayoutAccountEndpoint extends OpenAPIRoute {
 
 		const db = createDbClient(c.env.DB);
 		const account = await db.payoutAccount.findUnique({ where: { id: params.id } });
-		if (!account || account.userId !== userId) {
+		if (!account || account.userId !== userId || account.deletedAt !== null) {
 			throw new NotFoundException("Payout account not found.");
+		}
+
+		if (body.accountName !== undefined) {
+			const user = await db.user.findUniqueOrThrow({ where: { id: userId } });
+			if (user.displayName && !isNameMatching(body.accountName, user.displayName)) {
+				throw new HTTPException(400, {
+					message: `Account name ("${body.accountName}") must match your registered name ("${user.displayName}").`,
+				});
+			}
+			if (!user.displayName) {
+				await db.user.update({ where: { id: userId }, data: { displayName: body.accountName } });
+			}
 		}
 
 		if (body.isDefault === true) {
 			await db.payoutAccount.updateMany({
-				where: { userId, isDefault: true },
+				where: { userId, isDefault: true, deletedAt: null },
 				data: { isDefault: false },
 			});
 		}

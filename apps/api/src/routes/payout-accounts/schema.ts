@@ -11,6 +11,7 @@ export const payoutAccountSchema = z.object({
 	bankCode: z.string().nullable(),
 	isDefault: z.boolean(),
 	isVerified: z.boolean(),
+	deletedAt: z.iso.datetime().nullable().optional(),
 	createdAt: z.iso.datetime(),
 	updatedAt: z.iso.datetime(),
 });

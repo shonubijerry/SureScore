@@ -16,6 +16,7 @@ const FAQ: { title: string; items: { q: string; a: string }[] }[] = [
     title: 'Predicting',
     items: [
       { q: 'Does it cost anything to predict?', a: 'No. Predicting on a pot is free. You only need payout details saved so we can send you the prize if you win.' },
+      { q: 'Can a potter predict their own pot?', a: 'Yes! Potters can predict on pots they create under the same fair rules and lock times as everyone else.' },
       { q: 'Until when can I predict?', a: 'Predictions lock 15 minutes before kickoff. You can change your prediction any time before the lock.' },
       { q: 'Can I predict more than once on a pot?', a: 'Each person has one prediction per pot. Editing it replaces the previous one.' },
       { q: 'What is the optional first-goal minute?', a: 'You can guess the minute of the first goal. It is only used to break ties between players on equal points.' },

@@ -116,7 +116,7 @@ export class AdminTransferService {
 			});
 		} else {
 			if (pot.status !== "Paid") fail(409, `Cannot pay out a ${pot.status} pot.`);
-			const accounts = await this.db.payoutAccount.findMany({ where: { userId: latest.userId } });
+			const accounts = await this.db.payoutAccount.findMany({ where: { userId: latest.userId, deletedAt: null } });
 			const account = pickPayoutAccount(accounts, pot.countryCode);
 			if (!account) fail(422, "The user has no payout account for this country yet.");
 			await enqueueTransfer(this.env, {

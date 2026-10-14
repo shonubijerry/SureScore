@@ -83,6 +83,36 @@ describe("create pot -> fund -> predict -> settle -> payout", () => {
 		expect(stored.accountLast4).toBe("6789");
 		expect(account.headers.get("cache-control")).toBe("no-store");
 
+		// Potter can also add a payout account and predict their own pot
+		const potterAccount = await call("/api/payout-accounts", potter.token, "POST", { accountName: "potter", accountNumber: "9876543210", bankCode: "058" });
+		expect(potterAccount.status).toBe(201);
+		const potterPred = await call(`/api/pots/${potId}/predictions`, potter.token, "POST", { homeGoals: 1, awayGoals: 1 });
+		expect(potterPred.status).toBe(201);
+
+		// Second account for Alice, then set it as default, then soft delete it
+		const alice2 = await call("/api/payout-accounts", alice.token, "POST", { accountName: "Alice", accountNumber: "1122334455", bankCode: "058" });
+		expect(alice2.status).toBe(201);
+		expect(alice2.body.payoutAccount.isDefault).toBe(false);
+
+		// Set second account as active / default
+		const patchRes = await call(`/api/payout-accounts/${alice2.body.payoutAccount.id}`, alice.token, "PATCH", { isDefault: true });
+		expect(patchRes.status).toBe(200);
+		expect(patchRes.body.payoutAccount.isDefault).toBe(true);
+
+		// Soft delete the second account
+		const delRes = await call(`/api/payout-accounts/${alice2.body.payoutAccount.id}`, alice.token, "DELETE");
+		expect(delRes.status).toBe(200);
+
+		// Listing accounts only returns active non-deleted accounts
+		const listRes = await call("/api/payout-accounts", alice.token, "GET");
+		expect(listRes.body.payoutAccounts).toHaveLength(1);
+		expect(listRes.body.payoutAccounts[0].id).toBe(account.body.payoutAccount.id);
+
+		// Name matching check: account name that does not match displayName is rejected
+		const mismatchRes = await call("/api/payout-accounts", alice.token, "POST", { accountName: "Completely Different Name", accountNumber: "1234567890", bankCode: "044" });
+		expect(mismatchRes.status).toBe(400);
+		expect(mismatchRes.body.message).toContain("must match");
+
 		await call("/api/payout-accounts", bob.token, "POST", { accountName: "Bob", accountNumber: "0123456789", bankCode: "044" });
 
 		expect((await call(`/api/pots/${potId}/predictions`, alice.token, "POST", { homeGoals: 2, awayGoals: 1 })).status).toBe(201);

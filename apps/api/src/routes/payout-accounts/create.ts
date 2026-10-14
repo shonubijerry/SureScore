@@ -1,7 +1,8 @@
 import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
+import { HTTPException } from "hono/http-exception";
 import { createDbClient } from "@surescore/db";
-import { resolvePaymentProviderForCountry } from "@surescore/shared";
+import { isNameMatching, resolvePaymentProviderForCountry } from "@surescore/shared";
 import { recordAudit } from "../../lib/audit.js";
 import { sealAccountNumber, toPublicAccount } from "../../lib/secure-data.js";
 import type { AppContext } from "../../types.js";
@@ -35,10 +36,19 @@ export class CreatePayoutAccountEndpoint extends OpenAPIRoute {
 		const db = createDbClient(c.env.DB);
 		const user = await db.user.findUniqueOrThrow({ where: { id: userId } });
 
+		if (user.displayName && !isNameMatching(body.accountName, user.displayName)) {
+			throw new HTTPException(400, {
+				message: `Account name ("${body.accountName}") must match your registered name ("${user.displayName}").`,
+			});
+		}
+		if (!user.displayName) {
+			await db.user.update({ where: { id: userId }, data: { displayName: body.accountName } });
+		}
+
 		// The payout provider is always derived from the user's country, never
 		// accepted from the client, to keep provider selection config-driven.
 		const provider = resolvePaymentProviderForCountry(user.countryCode);
-		const existingCount = await db.payoutAccount.count({ where: { userId } });
+		const existingCount = await db.payoutAccount.count({ where: { userId, deletedAt: null } });
 
 		const account = await db.payoutAccount.create({
 			data: {

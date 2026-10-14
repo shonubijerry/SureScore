@@ -52,7 +52,7 @@ export interface PredictedPot extends PredictionPick {
 }
 
 export interface PredictionView {
-  prediction: PredictionPick & { id: string }
+  prediction: (PredictionPick & { id: string }) | null
   final: boolean
   breakdown: ScoreBreakdown | null
 }
@@ -74,6 +74,21 @@ export interface Country {
   name: string
   currency: string
   isLaunched: boolean
+}
+
+export interface PayoutAccount {
+  id: string
+  userId: string
+  countryCode: string
+  provider: string
+  accountName: string
+  accountNumber: string
+  bankCode: string | null
+  isDefault: boolean
+  isVerified: boolean
+  deletedAt?: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export interface TransferStatus {

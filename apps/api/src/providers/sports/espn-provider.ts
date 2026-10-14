@@ -11,6 +11,7 @@ import type { FinalResult, FixturesQuery, MatchStatus, SportsEvent, SportsProvid
 export interface EspnSportsProviderConfig {
 	baseUrl?: string
 	fetchImpl?: typeof fetch
+	leagues?: string[]
 }
 
 interface EspnCompetitor {
@@ -23,7 +24,7 @@ interface EspnCompetitor {
 interface EspnStatusType {
 	name: string // e.g. STATUS_SCHEDULED, STATUS_IN_PROGRESS, STATUS_FINAL, STATUS_POSTPONED, STATUS_CANCELED
 	completed: boolean
-	description: string // e.g. "Scheduled", "In Progress", "Full Time", "Postponed", "Canceled"
+	description?: string // e.g. "Scheduled", "In Progress", "Full Time", "Postponed", "Canceled"
 }
 
 interface EspnCompetition {
@@ -58,8 +59,32 @@ interface EspnScoreboardResponse {
 	events: EspnEvent[]
 }
 
-function toInternalStatus(espnStatusDescription: string) {
-	return espnStatusDescription.toLowerCase() as MatchStatus
+function toInternalStatus(type?: EspnStatusType) {
+	const desc = type?.description?.toLowerCase()
+	if (desc === 'full time' || desc === 'finished') return 'finished'
+	if (desc === 'in progress' || desc === 'first half') return 'first half'
+	if (desc === 'halftime' || desc === 'half time') return 'half time'
+	if (desc === 'second half') return 'second half'
+	if (desc === 'postponed') return 'postponed'
+	if (desc === 'canceled' || desc === 'abandoned') return 'abandoned'
+	if (desc === 'scheduled') return 'scheduled'
+
+	const name = type?.name
+	switch (name) {
+		case 'STATUS_IN_PROGRESS':
+			return 'first half'
+		case 'STATUS_HALFTIME':
+			return 'half time'
+		case 'STATUS_FINAL':
+			return 'finished'
+		case 'STATUS_POSTPONED':
+			return 'postponed'
+		case 'STATUS_CANCELED':
+		case 'STATUS_ABANDONED':
+			return 'abandoned'
+		default:
+			return (desc as MatchStatus) || 'scheduled'
+	}
 }
 
 function toScore(value: string | undefined): number | null {
@@ -112,7 +137,7 @@ function normalizeEvent(league: string, event: EspnEvent): SportsEvent {
 	const competition = event.competitions[0]
 	const home = competition?.competitors.find((competitor) => competitor.homeAway === 'home')
 	const away = competition?.competitors.find((competitor) => competitor.homeAway === 'away')
-	const status = toInternalStatus(competition?.status.type.description ?? '')
+	const status = toInternalStatus(competition?.status?.type)
 
 	return {
 		id: event.id,
@@ -130,7 +155,7 @@ function normalizeEvent(league: string, event: EspnEvent): SportsEvent {
 		// soccer; extra time/penalty shootout outcomes are reported separately
 		// and are never folded into this field, so "finished" here is always the
 		// regulation-time result.
-		isFinalResultOfficial: status === 'full time',
+		isFinalResultOfficial: status === 'finished' || status === 'full time',
 		firstGoalMinute: toFirstGoalMinute(competition?.details),
 		underdog: toUnderdog(competition?.odds),
 		importance: toImportance(competition),
@@ -143,12 +168,18 @@ export class EspnSportsProvider implements SportsProvider {
 
 	private readonly baseUrl: string
 	private readonly fetchImpl: typeof fetch
+	private readonly leagues?: string[]
 
 	constructor(config: EspnSportsProviderConfig = {}) {
 		this.baseUrl = config.baseUrl ?? 'https://site.web.api.espn.com/apis/site/v2/sports/soccer'
 		// Bind to globalThis: workerd's fetch requires its original `this`, which
 		// an unbound function reference loses ("Illegal invocation").
 		this.fetchImpl = config.fetchImpl ?? fetch.bind(globalThis)
+		this.leagues = config.leagues
+	}
+
+	private configuredLeagues(): string[] {
+		return this.leagues ?? getSportsProviderConfig(this.id)?.leagues ?? []
 	}
 
 	private async fetchScoreboard(league: string, date?: Date): Promise<SportsEvent[]> {
@@ -174,7 +205,7 @@ export class EspnSportsProvider implements SportsProvider {
 			throw new Error('Fixtures end date must not be before start date')
 		}
 
-		const leagues = getSportsProviderConfig(this.id)?.leagues ?? []
+		const leagues = this.configuredLeagues()
 		const events: SportsEvent[] = []
 		for (const league of leagues) {
 			for (const date = new Date(from); date <= to; date.setUTCDate(date.getUTCDate() + 1)) {
@@ -211,7 +242,7 @@ export class EspnSportsProvider implements SportsProvider {
 
 	/** ESPN's scoreboard is not queryable by event id directly, so we scan the configured leagues. */
 	private async findEvent(eventId: string): Promise<SportsEvent> {
-		const leagues = getSportsProviderConfig(this.id)?.leagues ?? []
+		const leagues = this.configuredLeagues()
 		for (const league of leagues) {
 			const events = await this.fetchScoreboard(league)
 			const match = events.find((event) => event.id === eventId)

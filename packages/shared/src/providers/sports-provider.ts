@@ -3,11 +3,21 @@
 // types; provider-specific response shapes (ESPN scoreboard JSON, etc.) must
 // stay inside the adapter that implements this interface.
 
-export const matchStatuses = ["scheduled", "first half", "half time", "second half", "full time", "postponed", "abandoned"] as const;
+export const matchStatuses = [
+  "scheduled",
+  "first half",
+  "half time",
+  "second half",
+  "full time",
+  "live",
+  "finished",
+  "postponed",
+  "abandoned",
+] as const;
 export type MatchStatus = (typeof matchStatuses)[number];
 
 /** Statuses during which the match is in play and scores refresh every 10 minutes. */
-export const liveMatchStatuses: readonly MatchStatus[] = ["first half", "half time", "second half"];
+export const liveMatchStatuses: readonly MatchStatus[] = ["first half", "half time", "second half", "live"];
 
 /**
  * Normalized internal sports event. Scores always reflect 90 minutes of

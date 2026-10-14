@@ -52,7 +52,7 @@ describe("EspnSportsProvider", () => {
       .fn()
       .mockResolvedValueOnce(scoreboardResponse([scheduledEvent]))
       .mockResolvedValueOnce(scoreboardResponse([]));
-    const provider = new EspnSportsProvider({ fetchImpl });
+    const provider = new EspnSportsProvider({ fetchImpl, leagues: ["eng.1"] });
 
     const fixtures = await provider.getFixtures({
       from: "2026-09-27T00:00:00Z",

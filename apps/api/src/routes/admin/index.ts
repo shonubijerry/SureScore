@@ -14,7 +14,7 @@ import {
 	SettlementOverrideEndpoint,
 } from "./pots.js";
 import { PayoutQueueEndpoint, RefundQueueEndpoint, RetryTransferEndpoint } from "./transfers.js";
-import { ProviderHealthEndpoint, SearchLedgerEndpoint } from "./operations.js";
+import { ProviderHealthEndpoint, SearchLedgerEndpoint, SyncScoreboardEndpoint } from "./operations.js";
 import {
 	ReconciliationFindingsEndpoint,
 	ReconciliationStatusEndpoint,
@@ -55,4 +55,5 @@ route("post", "/reconciliation/findings/:id/resolve", "reconciliation.manage", R
 route("get", "/staff", "staff.view", ListStaffEndpoint);
 route("post", "/staff", "staff.manage", CreateStaffEndpoint);
 route("patch", "/staff/:id", "staff.manage", ChangeRoleEndpoint);
+route("post", "/sports/sync", "sports.sync", SyncScoreboardEndpoint);
 route("get", "/audit", "audit.view", AuditLogEndpoint);

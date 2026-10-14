@@ -20,7 +20,7 @@ export const isLive = (match: Match) => liveMatchStatuses.includes(match.status)
 
 // Providers report 0-0 for fixtures that haven't kicked off, so scores only count once played.
 export const hasScore = (match: Match) =>
-  match.status !== 'scheduled' && match.status !== 'postponed' && match.homeScore !== null && match.awayScore !== null
+  match.status !== 'postponed' && match.homeScore !== null && match.awayScore !== null
 
 export const isLocked = (lockIso: string) => Date.now() >= new Date(lockIso).getTime()
 

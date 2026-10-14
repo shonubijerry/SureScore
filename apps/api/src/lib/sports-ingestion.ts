@@ -4,7 +4,7 @@
 // "keep serving the last cached data" outcome.
 
 import { log } from "./logger.js"
-import { computeFreshness, getSportsProviderConfig, type SportsProvider } from "@surescore/shared";
+import { computeFreshness, getSportsProviderConfig, type FixturesQuery, type SportsProvider } from "@surescore/shared";
 import type { SportsEventCacheRecord, SportsEventCacheStore } from "./sports-cache-repository.js";
 
 export interface IngestionFailure {
@@ -48,10 +48,14 @@ async function forEachLeague(
 }
 
 /** Scheduled every 4 hours: prefetch upcoming fixtures per T4.1/T4.3. */
-export async function prefetchFixtures(provider: SportsProvider, store: SportsEventCacheStore): Promise<IngestionResult> {
+export async function prefetchFixtures(
+  provider: SportsProvider,
+  store: SportsEventCacheStore,
+  query?: FixturesQuery,
+): Promise<IngestionResult> {
   const now = new Date();
   try {
-    const events = await provider.getFixtures();
+    const events = await provider.getFixtures(query);
     const records = events.map((event) => ({
       ...event,
       freshness: computeFreshness(event.status, now.toISOString(), now),
