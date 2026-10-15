@@ -5,7 +5,7 @@
 // transition, and every payout job carries a stable idempotency key that the
 // queue consumer checks against the immutable ledger.
 
-import { log } from "./logger.js"
+import { log } from "../../platform/logger.js"
 import { HTTPException } from "hono/http-exception";
 import { createDbClient } from "@surescore/db";
 import {
@@ -16,9 +16,10 @@ import {
 	type MatchOutcome,
 	type PayoutRequest,
 } from "@surescore/shared";
-import { PrismaLedgerStore, type LedgerStore } from "./ledger.js";
+import { PrismaLedgerStore, type LedgerStore } from "../payments/ledger.js";
+import { pickPayoutAccount } from "../payments/payout-recipient.js";
 import { PotService, SYSTEM_ACTOR } from "./pot-service.js";
-import { enqueueTransfers, type TransferJob } from "./transfer-queue.js";
+import { enqueueTransfers, type TransferJob } from "../payments/transfer-queue.js";
 
 export const payoutKey = (potId: string, userId: string) => `payout:${potId}:${userId}`;
 
@@ -45,10 +46,6 @@ export function latestPerAction<T extends Pick<TransferRow, "entryKey" | "idempo
 	}
 	return [...latest.values()];
 }
-
-/** The account a payout goes to: the user's default in the pot's country, else any account there. */
-export const pickPayoutAccount = <T extends { countryCode: string; isDefault: boolean }>(accounts: T[], countryCode: string) =>
-	accounts.find((a) => a.countryCode === countryCode && a.isDefault) ?? accounts.find((a) => a.countryCode === countryCode);
 
 export class SettlementService {
 	private readonly db;
@@ -99,8 +96,9 @@ export class SettlementService {
 			: regulationOutcome(pot.event);
 		if (!outcome) return false;
 
+		// Nobody to pay: the potter is refunded the prize less the platform fee.
 		if (pot.predictions.length === 0) {
-			return this.pots.cancel(pot, SYSTEM_ACTOR, "cancelled");
+			return this.pots.cancel(pot, SYSTEM_ACTOR, "no-winner");
 		}
 
 		const ranked = rankPredictions(

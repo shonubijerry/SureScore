@@ -1,6 +1,6 @@
 import type { ScoreBreakdown } from '@surescore/shared'
 import { Badge } from '@/components/ui/badge'
-import type { LeaderboardEntry } from '../lib/types'
+import type { LeaderboardEntry } from '../../../lib/types'
 
 const PARTS: [keyof ScoreBreakdown, string][] = [
   ['outcome', 'Result'],

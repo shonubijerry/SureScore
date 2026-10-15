@@ -1,6 +1,6 @@
 import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
-import { SettlementService } from "../../lib/settlement-service.js";
+import { SettlementService } from "../../modules/pots/settlement-service.js";
 import type { AppContext } from "../../types.js";
 import { potIdParams } from "./schema.js";
 

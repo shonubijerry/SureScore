@@ -2,7 +2,10 @@ import type { MatchStatus, PotStatus, ScoreBreakdown } from '@surescore/shared'
 
 export interface User {
   id: string
-  email: string
+  /** Sign-in id; null only for accounts created during phone sign-in. */
+  email: string | null
+  /** E.164 contact number; not verified. */
+  phone: string | null
   countryCode: string
   displayName: string | null
   role: string
@@ -27,6 +30,13 @@ export interface Match {
   lastRefreshedAt: string
 }
 
+export interface League {
+  code: string
+  name: string
+  logoUrl: string
+  darkLogoUrl: string
+}
+
 export interface PotCard {
   id: string
   status: PotStatus
@@ -34,11 +44,22 @@ export interface PotCard {
   currency: string
   prizeAmountMinorUnits: number
   winnerCount: number
+  /** Private pots are hidden from discovery and reached through their share link. */
+  isPrivate: boolean
+  /** Set once funded. */
   shareCode: string | null
   predictionCount: number
   predictionLocksAt: string
   createdAt: string
   match: Match
+}
+
+/** Returned when a verification code has been sent. */
+export interface OtpChallenge {
+  /** Where the code went. */
+  sentTo: string
+  expiresAt: string
+  resendAvailableAt: string
 }
 
 export interface PredictionPick {
@@ -138,7 +159,7 @@ export interface LedgerRow {
   reference: string | null
   detail: string | null
   createdAt: string
-  user?: { email: string; displayName: string | null }
+  user?: { email: string | null; phone: string | null; displayName: string | null }
 }
 
 export interface TransferRow {
@@ -148,6 +169,7 @@ export interface TransferRow {
   potId: string
   potStatus: string | null
   email: string | null
+  phone: string | null
   currency: string
   amountMinorUnits: number
   provider: string
@@ -199,7 +221,8 @@ export interface ReconciliationStatus {
 
 export interface StaffUser {
   id: string
-  email: string
+  phone: string | null
+  email: string | null
   displayName: string | null
   role: 'user' | 'staff' | 'admin'
   countryCode: string

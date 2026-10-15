@@ -1,55 +1,58 @@
-import { OpenAPIRoute, UnauthorizedException, contentJson } from "chanfana";
+import { OpenAPIRoute, contentJson } from "chanfana";
+import { countryOfPhone } from "@surescore/shared";
 import { z } from "zod";
 import { createDbClient } from "@surescore/db";
-import { verifySession, AuthError } from "../../lib/auth.js";
+import { errorResponse } from "../../http/openapi.js";
 import type { AppContext } from "../../types.js";
+import { fullNameSchema, phoneSchema, userResponseSchema, userView } from "./schema.js";
 
 export class MeEndpoint extends OpenAPIRoute {
 	schema = {
 		tags: ["Auth"],
 		summary: "Get the current authenticated user",
 		responses: {
-			"200": {
-				description: "Current user",
-				...contentJson(
-					z.object({
-						id: z.string(),
-						email: z.string(),
-						countryCode: z.string(),
-						displayName: z.string().nullable(),
-						role: z.string(),
-					}),
-				),
-			},
-			...UnauthorizedException.schema(),
+			"200": { description: "Current user", ...contentJson(userResponseSchema) },
+			"401": errorResponse("Not signed in"),
 		},
 	};
 
 	async handle(c: AppContext) {
-		const token = c.req.header("Authorization")?.replace(/^Bearer\s+/i, "");
-		if (!token) {
-			throw new UnauthorizedException("Missing bearer token.");
-		}
+		const user = await createDbClient(c.env.DB).user.findUnique({ where: { id: c.get("userId") } });
+		if (!user) return c.json({ error: "User no longer exists." }, 401);
+		return c.json(userView(user));
+	}
+}
 
-		const db = createDbClient(c.env.DB);
-		try {
-			const { userId } = await verifySession(c.env.SESSIONS, c.env.AUTH_SECRET, token);
-			const user = await db.user.findUnique({ where: { id: userId } });
-			if (!user) {
-				throw new UnauthorizedException("User no longer exists.");
-			}
-			return c.json({
-				id: user.id,
-				email: user.email,
-				countryCode: user.countryCode,
-				displayName: user.displayName,
-				role: user.role,
-			});
-		} catch (error) {
-			if (error instanceof AuthError) {
-				throw new UnauthorizedException(error.message);
-			}
-			throw error;
+export class UpdateMeEndpoint extends OpenAPIRoute {
+	schema = {
+		tags: ["Auth"],
+		summary: "Update profile details: full name and/or phone. Omitted fields are unchanged. (Email is the verified sign-in id and can't be changed here.)",
+		request: {
+			body: contentJson(
+				z
+					.object({ fullName: fullNameSchema.optional(), phone: phoneSchema.optional() })
+					.refine((b) => b.fullName !== undefined || b.phone !== undefined, "Nothing to update."),
+			),
+		},
+		responses: {
+			"200": { description: "Updated user", ...contentJson(userResponseSchema) },
+			"422": errorResponse("Phone number not valid for a supported country"),
+		},
+	};
+
+	async handle(c: AppContext) {
+		const { body } = await this.getValidatedData<typeof this.schema>();
+		if (body.phone !== undefined && !countryOfPhone(body.phone)?.isLaunched) {
+			return c.json({ error: "Enter a valid mobile number for a supported country." }, 422);
 		}
+		const user = await createDbClient(c.env.DB).user.update({
+			where: { id: c.get("userId") },
+			data: {
+				...(body.fullName !== undefined && { displayName: body.fullName }),
+				// Not verified; changing it clears any old SMS verification.
+				...(body.phone !== undefined && { phone: body.phone, phoneVerifiedAt: null }),
+			},
+		});
+		return c.json(userView(user));
 	}
 }

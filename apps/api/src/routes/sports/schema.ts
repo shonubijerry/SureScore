@@ -1,6 +1,13 @@
 import { z } from "zod";
 import { matchStatuses } from "@surescore/shared";
 
+export const leagueSchema = z.object({
+	code: z.string().describe("Provider league code; filter matches with ?league="),
+	name: z.string(),
+	logoUrl: z.string().describe("Logo for light backgrounds"),
+	darkLogoUrl: z.string().describe("Logo for dark backgrounds"),
+});
+
 export const sportsEventSchema = z.object({
 	id: z.string(),
 	cacheId: z.string().describe("Id to use when creating pots and fetching match detail"),

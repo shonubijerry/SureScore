@@ -2,14 +2,14 @@
 // request (see middleware), so a change here takes effect immediately.
 
 import { createDbClient } from "@surescore/db";
-import { isRole, resolveSignupCountry, type Role } from "@surescore/shared";
+import { isRole, normalizeEmail, resolveSignupCountry, type Role } from "@surescore/shared";
 import { recordAudit } from "./audit.js";
-import { inChunks } from "./chunk.js";
-import { hashPassword } from "./password.js";
-import { pageArgs, toPage } from "./pagination.js";
-import { fail } from "./pot-service.js";
+import { inChunks } from "../../platform/chunk.js";
+import { hashPassword } from "../auth/password.js";
+import { pageArgs, toPage } from "../../http/pagination.js";
+import { fail } from "../pots/pot-service.js";
 
-const publicUser = { id: true, email: true, displayName: true, role: true, countryCode: true, createdAt: true } as const;
+const publicUser = { id: true, phone: true, email: true, displayName: true, role: true, countryCode: true, createdAt: true } as const;
 
 export class AdminStaffService {
 	private readonly db;
@@ -23,7 +23,9 @@ export class AdminStaffService {
 		const rows = await this.db.user.findMany({
 			where: {
 				role: role ?? { in: ["staff", "admin"] },
-				...(term ? { OR: [{ email: { contains: term.toLowerCase() } }, { displayName: { contains: term } }] } : {}),
+				...(term
+					? { OR: [{ phone: { contains: term } }, { email: { contains: term.toLowerCase() } }, { displayName: { contains: term } }] }
+					: {}),
 			},
 			select: publicUser,
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -37,7 +39,7 @@ export class AdminStaffService {
 		actorId: string,
 		input: { email: string; role: Exclude<Role, "user">; password?: string; displayName?: string; reason: string },
 	) {
-		const email = input.email.trim().toLowerCase();
+		const email = normalizeEmail(input.email);
 		const existing = await this.db.user.findUnique({ where: { email }, select: publicUser });
 		let user;
 		if (existing) {
@@ -45,6 +47,7 @@ export class AdminStaffService {
 			user = await this.db.user.update({ where: { id: existing.id }, data: { role: input.role }, select: publicUser });
 		} else {
 			if (!input.password) fail(422, "A password is required to create a new account.");
+			if (!input.displayName) fail(422, "A full name is required to create a new account.");
 			const { hash, salt } = await hashPassword(input.password);
 			user = await this.db.user.create({
 				data: {
@@ -76,7 +79,7 @@ export class AdminStaffService {
 		return user;
 	}
 
-	/** Audit trail, newest first, with the actor's email attached. */
+	/** Audit trail, newest first, with the actor's email (or phone) attached. */
 	async audit({ action, actorId, potId, limit, cursor }: { action?: string; actorId?: string; potId?: string; limit?: number; cursor?: string }) {
 		const rows = await this.db.adminAuditLog.findMany({
 			where: { ...(action && { action }), ...(actorId && { actorId }), ...(potId && { potId }) },
@@ -85,9 +88,9 @@ export class AdminStaffService {
 		});
 		const page = toPage(rows, limit);
 		const actors = await inChunks([...new Set(page.items.map((r) => r.actorId))], (ids) =>
-			this.db.user.findMany({ where: { id: { in: ids } }, select: { id: true, email: true } }),
+			this.db.user.findMany({ where: { id: { in: ids } }, select: { id: true, email: true, phone: true } }),
 		);
-		const email = new Map(actors.map((a) => [a.id, a.email]));
+		const email = new Map(actors.map((a) => [a.id, a.email ?? a.phone]));
 		return { ...page, items: page.items.map((r) => ({ ...r, actorEmail: email.get(r.actorId) ?? null })) };
 	}
 }

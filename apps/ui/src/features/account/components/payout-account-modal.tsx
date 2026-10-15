@@ -1,11 +1,11 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { isNameMatching, NIGERIAN_BANKS } from '@surescore/shared'
 import { Button } from '@/components/ui/button'
-import { Modal } from './modal'
-import { ErrorNote } from './bits'
-import { api } from '../lib/api'
-import { useAuth } from '../lib/auth'
-import type { PayoutAccount } from '../lib/types'
+import { Modal } from '../../../components/modal'
+import { ErrorNote } from '../../../components/bits'
+import { api } from '../../../lib/api'
+import { useAuth } from '../../auth/auth-context'
+import type { PayoutAccount } from '../../../lib/types'
 
 const inputClass = 'h-12 w-full rounded-2xl border border-input bg-transparent px-4 text-sm'
 

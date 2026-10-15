@@ -44,6 +44,15 @@ export function splitPrizePool(prizeMinorUnits: number) {
   return { winnerPool, platformFee: prizeMinorUnits - winnerPool };
 }
 
+/**
+ * What the potter gets back when a pot is refunded. A pot that ran to full
+ * time with nobody to pay ("no-winner") keeps the platform fee; every other
+ * refund (potter cancellation, postponed or abandoned match) is the full prize.
+ */
+export function refundAmountFor(prizeMinorUnits: number, reason?: string | null): number {
+  return reason === "no-winner" ? splitPrizePool(prizeMinorUnits).winnerPool : prizeMinorUnits;
+}
+
 /** Per-rank amounts for `count` winners; any rounding remainder goes to rank 1. */
 function slotAmounts(winnerPool: number, count: number): number[] {
   const amounts = DEFAULT_PRIZE_SPLITS[count].map((percent) => Math.floor((winnerPool * percent) / 100));

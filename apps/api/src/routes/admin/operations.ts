@@ -1,12 +1,12 @@
 import { OpenAPIRoute, contentJson } from "chanfana";
 import { createDbClient } from "@surescore/db";
 import { z } from "zod";
-import { AdminOpsService } from "../../lib/admin-ops.js";
-import { recordAudit } from "../../lib/audit.js";
-import { trackJob } from "../../lib/job-runs.js";
-import { PrismaSportsEventCacheStore } from "../../lib/sports-cache-repository.js";
-import { prefetchFixtures } from "../../lib/sports-ingestion.js";
-import { pageQuery } from "../../lib/pagination.js";
+import { AdminOpsService } from "../../modules/admin/ops.js";
+import { recordAudit } from "../../modules/admin/audit.js";
+import { trackJob } from "../../platform/job-runs.js";
+import { PrismaSportsEventCacheStore } from "../../modules/sports/cache-repository.js";
+import { prefetchFixtures } from "../../modules/sports/ingestion.js";
+import { pageQuery } from "../../http/pagination.js";
 import type { AppContext } from "../../types.js";
 import { createProviderRegistry } from "../../providers/registry.js";
 import { okResponse, reasonSchema } from "./schema.js";
@@ -26,7 +26,7 @@ export class ProviderHealthEndpoint extends OpenAPIRoute {
 export class SearchLedgerEndpoint extends OpenAPIRoute {
 	schema = {
 		tags: ["Admin"],
-		summary: "Search ledger history by reference, key, pot, user id or email",
+		summary: "Search ledger history by reference, key, pot, user id, email or phone (+234...)",
 		request: {
 			query: z.object({
 				q: z.string().optional(),

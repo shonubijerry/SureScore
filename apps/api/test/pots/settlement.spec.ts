@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { distributePrizes, regulationOutcome, resolveSignupCountry, splitPrizePool } from "@surescore/shared";
-import { latestPerAction, SettlementService } from "../src/lib/settlement-service";
+import { latestPerAction, SettlementService } from "../../src/modules/pots/settlement-service";
 
 const ranked = (...ranks: number[]) => ranks.map((rank, i) => ({ rank, id: `u${i + 1}` }));
 const amounts = (r: ReturnType<typeof ranked>, winners: number, prize = 10_000) =>

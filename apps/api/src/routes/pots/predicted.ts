@@ -2,9 +2,9 @@ import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
 import { createDbClient } from "@surescore/db";
 import { liveMatchStatuses } from "@surescore/shared";
-import { pageArgs, pageQuery, toPage } from "../../lib/pagination.js";
+import { pageArgs, pageQuery, toPage } from "../../http/pagination.js";
 import type { AppContext } from "../../types.js";
-import { potCard, potCardInclude } from "../../lib/views.js";
+import { potCard, potCardInclude } from "../../http/views.js";
 import { potCardSchema } from "./schema.js";
 
 export class ListPredictedPotsEndpoint extends OpenAPIRoute {

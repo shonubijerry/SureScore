@@ -5,13 +5,14 @@
 
 import { createDbClient } from "@surescore/db";
 import type { RefundReason } from "@surescore/shared";
-import { fail, PotService } from "./pot-service.js";
-import { attemptOf, latestPerAction, pickPayoutAccount } from "./settlement-service.js";
-import { enqueueTransfer } from "./transfer-queue.js";
-import { inChunks } from "./chunk.js";
-import { PAGE_DEFAULT, PAGE_MAX, pageArgs } from "./pagination.js";
-import type { LedgerStatus, LedgerType } from "./ledger.js";
-import type { AdminPotService } from "./admin-pots.js";
+import { fail, PotService } from "../pots/pot-service.js";
+import { attemptOf, latestPerAction } from "../pots/settlement-service.js";
+import { pickPayoutAccount } from "../payments/payout-recipient.js";
+import { enqueueTransfer } from "../payments/transfer-queue.js";
+import { inChunks } from "../../platform/chunk.js";
+import { PAGE_DEFAULT, PAGE_MAX, pageArgs } from "../../http/pagination.js";
+import type { LedgerStatus, LedgerType } from "../payments/ledger.js";
+import type { AdminPotService } from "./pots.js";
 
 type TransferType = Extract<LedgerType, "payout" | "refund">;
 
@@ -46,7 +47,7 @@ export class AdminTransferService {
 
 		const [users, pots, accounts] = await Promise.all([
 			inChunks([...new Set(current.map((r) => r.userId))], (ids) =>
-				this.db.user.findMany({ where: { id: { in: ids } }, select: { id: true, email: true, displayName: true } }),
+				this.db.user.findMany({ where: { id: { in: ids } }, select: { id: true, email: true, phone: true, displayName: true } }),
 			),
 			inChunks([...new Set(current.map((r) => r.potId))], (ids) =>
 				this.db.pot.findMany({ where: { id: { in: ids } }, select: { id: true, status: true } }),
@@ -75,6 +76,7 @@ export class AdminTransferService {
 					potStatus: potById.get(row.potId)?.status ?? null,
 					userId: row.userId,
 					email: userById.get(row.userId)?.email ?? null,
+					phone: userById.get(row.userId)?.phone ?? null,
 					displayName: userById.get(row.userId)?.displayName ?? null,
 					currency: row.currency,
 					amountMinorUnits: row.amountMinorUnits,
@@ -110,10 +112,9 @@ export class AdminTransferService {
 				where: { potId: pot.id, toStatus: "Cancelled" },
 				orderBy: { createdAt: "desc" },
 			});
-			await enqueueTransfer(this.env, {
-				...PotService.refundJob(pot, (cancelled?.reason as RefundReason | undefined) ?? "cancelled"),
-				attemptOffset,
-			});
+			// Uses the pot's refund account as it is now, so a potter can fix bad details before a retry.
+			const job = await new PotService(this.env).refundJobFor(pot, (cancelled?.reason as RefundReason | undefined) ?? "cancelled");
+			await enqueueTransfer(this.env, { ...job, attemptOffset });
 		} else {
 			if (pot.status !== "Paid") fail(409, `Cannot pay out a ${pot.status} pot.`);
 			const accounts = await this.db.payoutAccount.findMany({ where: { userId: latest.userId, deletedAt: null } });

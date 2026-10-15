@@ -45,7 +45,7 @@ Tick every box before promoting a release. Commands run from the repo root.
 ## 8. Observability and audit
 - [ ] Workers Logs enabled (`observability.enabled`); filter by `scope` = `sync | payout | refund | fund | settlement | job | alert | audit`.
 - [ ] Alert test: temporarily trigger a failed job or stale data and confirm the webhook message (deduped hourly).
-- [ ] Audit completeness: every admin mutation and payout-account change appears in Admin → Audit log with actor and reason (covered by `test/hardening.spec.ts`; actions listed in `apps/api/src/lib/audit.ts`). Financial actions are additionally in the immutable ledger.
+- [ ] Audit completeness: every admin mutation and payout-account change appears in Admin → Audit log with actor and reason (covered by `test/admin/staff.spec.ts`; actions listed in `apps/api/src/modules/admin/audit.ts`). Financial actions are additionally in the immutable ledger.
 - [ ] Reconciliation shows no open critical findings.
 
 ## 9. Go / no-go and rollback

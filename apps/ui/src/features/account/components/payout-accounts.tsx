@@ -4,11 +4,11 @@ import { getBankName } from '@surescore/shared'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Empty, ErrorNote, Loading, Section } from '../components/bits'
-import { PayoutAccountModal } from '../components/payout-account-modal'
-import { api } from '../lib/api'
-import type { PayoutAccount } from '../lib/types'
-import { useApi } from '../lib/use-api'
+import { Empty, ErrorNote, Loading, Section } from '../../../components/bits'
+import { PayoutAccountModal } from './payout-account-modal'
+import { api } from '../../../lib/api'
+import type { PayoutAccount } from '../../../lib/types'
+import { useApi } from '../../../lib/use-api'
 
 export default function PayoutAccountsPage() {
   const query = useApi<{ payoutAccounts: PayoutAccount[] }>('/api/payout-accounts')

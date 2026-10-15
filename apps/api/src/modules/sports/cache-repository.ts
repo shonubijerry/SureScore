@@ -5,7 +5,7 @@
 
 import type { CacheFreshness, MatchStatus, SportsEvent } from '@surescore/shared'
 import { createDbClient } from '@surescore/db'
-import { PAGE_DEFAULT } from './pagination.js'
+import { PAGE_DEFAULT } from '../../http/pagination.js'
 
 export interface SportsEventCacheRecord extends SportsEvent {
 	freshness: CacheFreshness
@@ -123,9 +123,26 @@ export class PrismaSportsEventCacheStore implements SportsEventCacheStore {
 
 	/** `cursor` is the cache id (`{provider}:{externalId}`) of the last row of the previous page. */
 	async listUpcoming(league?: string, limit = PAGE_DEFAULT, cursor?: string): Promise<SportsEventCacheRecord[]> {
+		return this.listPage({ statuses: ['scheduled'], league, limit, cursor })
+	}
+
+	/** Matches in `statuses` by kickoff (soonest first, or latest first for `desc`), one page at a time. */
+	async listPage({
+		statuses,
+		league,
+		order = 'asc',
+		limit = PAGE_DEFAULT,
+		cursor,
+	}: {
+		statuses: readonly MatchStatus[]
+		league?: string
+		order?: 'asc' | 'desc'
+		limit?: number
+		cursor?: string
+	}): Promise<SportsEventCacheRecord[]> {
 		const rows = await this.db.sportsEventCache.findMany({
-			where: { status: 'scheduled', ...(league ? { league } : {}) },
-			orderBy: [{ kickoffTimeUtc: 'asc' }, { id: 'asc' }],
+			where: { status: { in: [...statuses] }, ...(league ? { league } : {}) },
+			orderBy: [{ kickoffTimeUtc: order }, { id: order }],
 			take: limit,
 			...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
 		})

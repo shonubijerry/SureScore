@@ -16,6 +16,8 @@ import type {
 
 export interface PaystackProviderConfig {
   secretKey: string;
+  /** Paystack requires a customer email on every transaction; users sign up by phone, so a business address is used. */
+  customerEmail?: string;
   baseUrl?: string;
   fetchImpl?: typeof fetch;
 }
@@ -41,6 +43,11 @@ interface PaystackTransferData {
   currency: string;
 }
 
+const DEFAULT_CUSTOMER_EMAIL = "info@corestack.com.ng";
+
+/** Transfer references may only hold lowercase alphanumerics, "-" and "_"; our idempotency keys use ":". */
+export const toTransferReference = (idempotencyKey: string) => idempotencyKey.toLowerCase().replace(/[^a-z0-9_-]/g, "-");
+
 function toInternalStatus(paystackStatus: string): PaymentStatus {
   switch (paystackStatus) {
     case "success":
@@ -58,11 +65,13 @@ export class PaystackProvider implements PaymentProvider {
   readonly id = "paystack";
 
   private readonly secretKey: string;
+  private readonly customerEmail: string;
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
 
   constructor(config: PaystackProviderConfig) {
     this.secretKey = config.secretKey;
+    this.customerEmail = config.customerEmail || DEFAULT_CUSTOMER_EMAIL;
     this.baseUrl = config.baseUrl ?? "https://api.paystack.co";
     // Bind to globalThis: workerd's fetch requires its original `this`, which
     // an unbound function reference loses ("Illegal invocation").
@@ -90,7 +99,7 @@ export class PaystackProvider implements PaymentProvider {
       method: "POST",
       body: JSON.stringify({
         amount: request.amountMinorUnits,
-        email: request.email,
+        email: request.email ?? this.customerEmail,
         currency: request.currency,
         reference: request.idempotencyKey,
         ...(request.callbackUrl && { callback_url: request.callbackUrl }),
@@ -149,7 +158,7 @@ export class PaystackProvider implements PaymentProvider {
         amount: request.amountMinorUnits,
         currency: request.currency,
         recipient: request.recipientCode,
-        reference: request.idempotencyKey,
+        reference: toTransferReference(request.idempotencyKey),
       }),
     });
     return {
@@ -166,7 +175,7 @@ export class PaystackProvider implements PaymentProvider {
       method: "POST",
       body: JSON.stringify({
         transfer_code: request.originalReference,
-        reference: request.idempotencyKey,
+        reference: toTransferReference(request.idempotencyKey),
       }),
     });
     return {

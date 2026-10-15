@@ -4,7 +4,11 @@
 
 import { createDbClient } from "@surescore/db";
 import type { PaymentProvider } from "@surescore/shared";
-import { decrypt } from "./secure-data.js";
+import { decrypt } from "../../platform/secure-data.js";
+
+/** The account a transfer goes to: the user's default in the pot's country, else any account there. */
+export const pickPayoutAccount = <T extends { countryCode: string; isDefault: boolean }>(accounts: T[], countryCode: string) =>
+	accounts.find((a) => a.countryCode === countryCode && a.isDefault) ?? accounts.find((a) => a.countryCode === countryCode);
 
 export async function ensureRecipient(env: Env, provider: PaymentProvider, accountId: string, currency: string) {
 	const db = createDbClient(env.DB);

@@ -3,8 +3,8 @@ import { z } from "zod";
 import { HTTPException } from "hono/http-exception";
 import { createDbClient } from "@surescore/db";
 import { isNameMatching, resolvePaymentProviderForCountry } from "@surescore/shared";
-import { recordAudit } from "../../lib/audit.js";
-import { sealAccountNumber, toPublicAccount } from "../../lib/secure-data.js";
+import { recordAudit } from "../../modules/admin/audit.js";
+import { sealAccountNumber, toPublicAccount } from "../../platform/secure-data.js";
 import type { AppContext } from "../../types.js";
 import { payoutAccountSchema } from "./schema.js";
 

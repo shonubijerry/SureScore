@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Section } from '../../components/bits'
-import { api } from '../../lib/api'
-import { formatMoney } from '../../lib/format'
-import type { Finding, ReconciliationStatus } from '../../lib/types'
-import { useApi } from '../../lib/use-api'
-import { Can, DataTable, Query, ReasonForm, Row, toneFor, usePaged, when } from './kit'
+import { Section } from '../../../components/bits'
+import { api } from '../../../lib/api'
+import { formatMoney } from '../../../lib/format'
+import type { Finding, ReconciliationStatus } from '../../../lib/types'
+import { useApi } from '../../../lib/use-api'
+import { Can, DataTable, Query, ReasonForm, Row, toneFor, usePaged, when } from '../components/kit'
 
 export default function Reconciliation() {
   const status = useApi<ReconciliationStatus>('/api/admin/reconciliation')

@@ -3,7 +3,7 @@
 // This script pings wrangler's /__scheduled test endpoint on intervals.
 
 const API_BASE = process.env.API_URL || "http://localhost:8787";
-const LIVE_REFRESH_INTERVAL_MS = Number(process.env.DEV_CRON_INTERVAL_MS) || 60_000; // 1 min in dev
+const LIVE_REFRESH_INTERVAL_MS = Number(process.env.DEV_CRON_INTERVAL_MS) || 3600_000; // 1 hour in dev
 const FIXTURE_PREFETCH_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
 
 const CRONS = {

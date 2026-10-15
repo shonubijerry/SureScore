@@ -72,6 +72,15 @@ describe("reconcile", () => {
 		expect(codes).toEqual(expect.arrayContaining(["REFUNDED_WITHOUT_REFUND", "REFUND_AMOUNT_MISMATCH"]));
 	});
 
+	it("expects a no-winner refund to keep the platform fee", () => {
+		const noWinner = pot({ status: "Refunded", predictionCount: 0, refundReason: "no-winner" });
+		const refund = (amountMinorUnits: number) => group({ idempotencyKey: "refund:p1", type: "refund", userId: "potter", amountMinorUnits });
+		expect(run([noWinner], [fund, refund(9_000)])).toEqual([]);
+		expect(run([noWinner], [fund, refund(10_000)])).toContain("REFUND_AMOUNT_MISMATCH");
+		expect(run([pot({ status: "Refunded", refundReason: "postponed" })], [fund, refund(9_000)])).toContain("REFUND_AMOUNT_MISMATCH");
+		expect(summarizeLedger([noWinner], [fund, refund(9_000)]).NGN).toMatchObject({ refundedMinorUnits: 9_000, platformFeeMinorUnits: 1_000 });
+	});
+
 	it("flags stale pending and long-failing transfers, and potters paying themselves", () => {
 		const groups = [
 			fund,

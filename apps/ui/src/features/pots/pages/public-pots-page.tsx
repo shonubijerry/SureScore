@@ -1,12 +1,12 @@
 import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { ListState, Section } from '../components/bits'
+import { ListState, Section } from '../../../components/bits'
 import { PotCard } from '../components/pot-card'
-import { useAuth } from '../lib/auth'
-import { queryString } from '../lib/api'
-import { endOfDayIso, startOfDayIso, toDateInput } from '../lib/format'
-import type { PotCard as Pot } from '../lib/types'
-import { useApi } from '../lib/use-api'
+import { useAuth } from '../../auth/auth-context'
+import { queryString } from '../../../lib/api'
+import { endOfDayIso, startOfDayIso, toDateInput } from '../../../lib/format'
+import type { PotCard as Pot } from '../../../lib/types'
+import { useApi } from '../../../lib/use-api'
 
 const dayOffset = (days: number) => toDateInput(new Date(Date.now() + days * 86_400_000))
 

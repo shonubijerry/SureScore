@@ -16,7 +16,8 @@ export interface FundPotRequest {
   callbackUrl?: string;
 }
 
-export type RefundReason = "postponed" | "abandoned" | "cancelled";
+/** "no-winner": the match settled but nobody predicted, so there was no one to pay. */
+export type RefundReason = "postponed" | "abandoned" | "cancelled" | "no-winner";
 
 export interface RefundRequest {
   potId: string;
@@ -27,6 +28,8 @@ export interface RefundRequest {
   reason: RefundReason;
   /** Provider reference of the original funding payment being refunded. */
   originalReference: string;
+  /** Potter's refund account. When set the refund is sent there as a transfer; otherwise the funding payment is reversed. */
+  payoutAccountId?: string;
   idempotencyKey: string;
 }
 

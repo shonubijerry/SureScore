@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Section } from '../components/bits'
+import { Section } from '../../../components/bits'
 
 const FAQ: { title: string; items: { q: string; a: string }[] }[] = [
   {
@@ -9,7 +9,7 @@ const FAQ: { title: string; items: { q: string; a: string }[] }[] = [
       { q: 'What is a pot?', a: 'A pot is a prize fund tied to one football match. It has a prize amount, a number of winners (1 to 3) and a share link anyone can open to join.' },
       { q: 'Who is a potter?', a: 'The potter is the person who creates and funds a pot. Predicting on a pot does not make you a potter.' },
       { q: 'Is this betting?', a: 'No. Players never stake money. The prize is funded upfront by the potter, and you win by being the most accurate.' },
-      { q: 'How do I get started?', a: 'Create a free account, add your payout details in your profile, open a pot from Pots or Matches, and submit your predicted score.' },
+      { q: 'How do I get started?', a: 'Create a free account with your email (we email you a code to verify it), add your payout details in your profile, open a pot from Pots or Matches, and submit your predicted score.' },
     ],
   },
   {
@@ -47,14 +47,17 @@ const FAQ: { title: string; items: { q: string; a: string }[] }[] = [
     title: 'Creating a pot',
     items: [
       { q: 'How do I create a pot?', a: 'Choose a match, set the prize amount and number of winners, then pay to fund the pot. It opens to predictions once funding is confirmed. Share the link with friends.' },
-      { q: 'Can I cancel my pot?', a: 'Yes, until 20 minutes before kickoff. A cancelled pot is refunded.' },
-      { q: 'What happens if the match is postponed or abandoned?', a: 'The pot is refunded to the potter. The refund is started immediately; how long it takes to arrive depends on the payment provider.' },
-      { q: 'What if nobody predicts?', a: 'If no one joins, there are no winners to pay and the pot is refunded.' },
+      { q: 'Can I make a private pot?', a: 'Yes. Choose Private when you create the pot. It is not listed in Public pots; once it is funded you get a link to copy or share, and only people with the link can view and join. Anyone who has predicted keeps access without the link.' },
+      { q: 'Where do refunds go?', a: 'To the refund account you choose from your saved bank accounts when you create the pot.' },
+      { q: 'Can I cancel my pot?', a: 'Yes, until 20 minutes before kickoff. A cancelled pot is refunded in full.' },
+      { q: 'What happens if the match is postponed or abandoned?', a: 'The full prize is refunded to the potter. The refund is started immediately; how long it takes to arrive depends on the payment provider.' },
+      { q: 'What if nobody predicts?', a: 'If no one joins, there are no winners to pay, so the pot is refunded less the 10% platform fee.' },
     ],
   },
   {
     title: 'Account and support',
     items: [
+      { q: 'I forgot my password.', a: 'Tap "Forgot password?" on the sign-in page. We email a code to your account address; once it is confirmed you can set a new password, and you are signed out on other devices.' },
       { q: 'Which countries are supported?', a: 'Nigeria first. More countries will be added over time, each with its own local currency and payment options.' },
       { q: 'I need help with a payment or a result I think is wrong.', a: 'Our admin team reviews disputes and settlement exceptions. Every financial action is recorded and auditable.' },
     ],

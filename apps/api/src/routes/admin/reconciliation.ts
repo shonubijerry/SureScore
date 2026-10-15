@@ -1,11 +1,11 @@
 import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
-import { AdminPotService } from "../../lib/admin-pots.js";
-import { ReconciliationService } from "../../lib/reconciliation-service.js";
-import { recordAudit } from "../../lib/audit.js";
+import { AdminPotService } from "../../modules/admin/pots.js";
+import { ReconciliationService } from "../../modules/payments/reconciliation-service.js";
+import { recordAudit } from "../../modules/admin/audit.js";
 import { createDbClient } from "@surescore/db";
-import { trackJob } from "../../lib/job-runs.js";
-import { pageQuery } from "../../lib/pagination.js";
+import { trackJob } from "../../platform/job-runs.js";
+import { pageQuery } from "../../http/pagination.js";
 import type { AppContext } from "../../types.js";
 import { okResponse, reasonSchema } from "./schema.js";
 

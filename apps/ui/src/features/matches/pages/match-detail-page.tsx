@@ -2,12 +2,12 @@ import { Link, useParams } from 'react-router-dom'
 import { isMatchBookable } from '@surescore/shared'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { ErrorNote, ListState, Loading, Section } from '../components/bits'
+import { ErrorNote, ListState, Loading, Section } from '../../../components/bits'
 import { MatchHeader } from '../components/match-card'
-import { PotCard } from '../components/pot-card'
-import { queryString } from '../lib/api'
-import type { Match, PotCard as Pot } from '../lib/types'
-import { useApi } from '../lib/use-api'
+import { PotCard } from '../../pots/components/pot-card'
+import { queryString } from '../../../lib/api'
+import type { Match, PotCard as Pot } from '../../../lib/types'
+import { useApi } from '../../../lib/use-api'
 
 export default function MatchDetailPage() {
   const { id = '' } = useParams()

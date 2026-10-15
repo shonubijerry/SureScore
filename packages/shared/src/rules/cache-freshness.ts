@@ -3,7 +3,7 @@
 // recently a row was refreshed, using the ingestion job cadences as the
 // tolerance window before data is considered stale.
 
-import { liveMatchStatuses, type MatchStatus } from "./sports-provider.js";
+import { liveMatchStatuses, type MatchStatus } from "../providers/sports-provider.js";
 
 export type CacheFreshness = "live" | "cached" | "stale";
 

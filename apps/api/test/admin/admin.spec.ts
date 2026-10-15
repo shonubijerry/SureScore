@@ -1,21 +1,17 @@
 import { Hono } from "hono";
-import { requireStaff, requirePermission } from "../src/lib/middleware";
-import type { AppEnv } from "../src/types";
+import { requireStaff, requirePermission } from "../../src/http/middleware";
+import type { AppEnv } from "../../src/types";
 import { env } from "cloudflare:test";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDbClient } from "@surescore/db";
-import { AdminPotService } from "../src/lib/admin-pots";
-import { AdminTransferService } from "../src/lib/admin-transfers";
-import { AdminOpsService } from "../src/lib/admin-ops";
-import { ReconciliationService } from "../src/lib/reconciliation-service";
-import { trackJob } from "../src/lib/job-runs";
-import { PotService } from "../src/lib/pot-service";
+import { AdminPotService } from "../../src/modules/admin/pots";
+import { AdminTransferService } from "../../src/modules/admin/transfers";
+import { AdminOpsService } from "../../src/modules/admin/ops";
+import { ReconciliationService } from "../../src/modules/payments/reconciliation-service";
+import { trackJob } from "../../src/platform/job-runs";
+import { PotService } from "../../src/modules/pots/pot-service";
+import { applyMigrations } from "../helpers/db";
 
-const migrations = (import.meta as unknown as { glob: (p: string, o: object) => unknown }).glob("../../../packages/db/prisma/migrations/*/migration.sql", {
-	query: "?raw",
-	import: "default",
-	eager: true,
-}) as Record<string, string>;
 
 const send = vi.fn().mockResolvedValue(undefined);
 const testEnv = { ...env, TRANSFER_QUEUE: { send, sendBatch: send } } as unknown as Env;
@@ -25,16 +21,7 @@ const transfers = new AdminTransferService(testEnv, adminPots);
 const kickoff = new Date(Date.now() + 86_400_000);
 
 beforeAll(async () => {
-	for (const path of Object.keys(migrations).sort()) {
-		const statements = migrations[path]
-			.split("\n")
-			.filter((line) => !line.trim().startsWith("--"))
-			.join("\n")
-			.split(/;\s*\n/)
-			.map((s) => s.trim())
-			.filter(Boolean);
-		await env.DB.batch(statements.map((s) => env.DB.prepare(s)));
-	}
+	await applyMigrations();
 });
 
 async function seed(status: string, extra: { account?: boolean } = {}) {
@@ -217,8 +204,18 @@ describe("ops views and reconciliation", () => {
 	});
 });
 
-it("PotService.refundJob uses the stable refund idempotency key", () => {
-	expect(PotService.refundJob({ id: "p", potterId: "u", countryCode: "NG", currency: "NGN", prizeAmountMinorUnits: 1, fundingReference: null } as never, "cancelled").request.idempotencyKey).toBe("refund:p");
+describe("PotService.refundJob", () => {
+	const pot = { id: "p", potterId: "u", countryCode: "NG", currency: "NGN", prizeAmountMinorUnits: 10_000, fundingReference: null } as never;
+
+	it("uses the stable refund idempotency key", () => {
+		expect(PotService.refundJob(pot, "cancelled").request.idempotencyKey).toBe("refund:p");
+	});
+
+	it("refunds the full prize unless the pot closed with no winner, which keeps the 10% fee", () => {
+		expect(PotService.refundJob(pot, "cancelled").request.amountMinorUnits).toBe(10_000);
+		expect(PotService.refundJob(pot, "postponed").request.amountMinorUnits).toBe(10_000);
+		expect(PotService.refundJob(pot, "no-winner", "acct").request).toMatchObject({ amountMinorUnits: 9_000, payoutAccountId: "acct" });
+	});
 });
 
 describe("role guards", () => {

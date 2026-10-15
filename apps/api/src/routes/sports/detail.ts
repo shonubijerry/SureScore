@@ -1,7 +1,7 @@
 import { OpenAPIRoute, contentJson, NotFoundException } from "chanfana";
 import { z } from "zod";
-import { PrismaSportsEventCacheStore } from "../../lib/sports-cache-repository.js";
-import { matchView } from "../../lib/views.js";
+import { PrismaSportsEventCacheStore } from "../../modules/sports/cache-repository.js";
+import { matchView } from "../../http/views.js";
 import type { AppContext } from "../../types.js";
 import { sportsEventSchema } from "./schema.js";
 

@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { Users } from 'lucide-react'
+import { Lock, Users } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { formatMoney } from '../lib/format'
-import type { PotCard as Pot } from '../lib/types'
-import { MatchHeader } from './match-card'
+import { formatMoney } from '../../../lib/format'
+import type { PotCard as Pot } from '../../../lib/types'
+import { MatchHeader } from '../../matches/components/match-card'
 
 export function PotCard({ pot, children, linked = true }: { pot: Pot; children?: ReactNode; linked?: boolean }) {
   const body = (
@@ -20,6 +20,11 @@ export function PotCard({ pot, children, linked = true }: { pot: Pot; children?:
           <span className="flex items-center gap-1">
             <Users aria-hidden className="size-3" /> {pot.predictionCount}
           </span>
+          {pot.isPrivate && (
+            <Badge variant="outline" className="gap-1">
+              <Lock aria-hidden className="size-3" /> Private
+            </Badge>
+          )}
           <Badge variant="outline">{pot.status}</Badge>
         </span>
       </div>

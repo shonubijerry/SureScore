@@ -1,15 +1,19 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Lock } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Breakdown, Leaderboard as LeaderboardList } from '../components/leaderboard'
-import { Empty, ErrorNote, Loading, Section, SignInPrompt } from '../components/bits'
-import { MatchHeader } from '../components/match-card'
+import { Empty, ErrorNote, Loading, Section, SignInPrompt } from '../../../components/bits'
+import { MatchHeader } from '../../matches/components/match-card'
 import { PredictionForm, Stepper } from '../components/prediction-form'
-import { useAuth } from '../lib/auth'
-import { formatKickoff, formatMoney, isLocked } from '../lib/format'
-import type { Leaderboard, PotCard, PotSettlement, PredictionView } from '../lib/types'
-import { useApi } from '../lib/use-api'
+import { ShareButtons } from '../components/share-buttons'
+import { queryString } from '../../../lib/api'
+import { useAuth } from '../../auth/auth-context'
+import { formatKickoff, formatMoney, isLocked } from '../../../lib/format'
+import type { Leaderboard, PotCard, PotSettlement, PredictionView } from '../../../lib/types'
+import { useApi } from '../../../lib/use-api'
 
 const LIVE_REFRESH_MS = 120_000
 const CLOSED_STATUSES = ['Cancelled', 'Refunded']
@@ -25,11 +29,14 @@ function Fact({ label, value }: { label: string; value: string }) {
 
 function GuestPrediction({ pot }: { pot: PotCard }) {
   const navigate = useNavigate()
+  // Keep the share code, so a private pot is still reachable after signing in.
+  const { pathname, search } = useLocation()
+  const here = `${pathname}${search}`
   const [home, setHome] = useState(0)
   const [away, setAway] = useState(0)
 
   const handlePredict = () => {
-    navigate('/signup', { state: { from: `/pots/${pot.id}` } })
+    navigate('/signup', { state: { from: here } })
   }
 
   return (
@@ -49,7 +56,7 @@ function GuestPrediction({ pot }: { pot: PotCard }) {
             </Button>
             <p className="text-center text-xs text-muted-foreground">
               Already have an account?{' '}
-              <Link to="/login" state={{ from: `/pots/${pot.id}` }} className="font-semibold underline">
+              <Link to="/login" state={{ from: here }} className="font-semibold underline">
                 Sign in
               </Link>
             </p>
@@ -60,7 +67,7 @@ function GuestPrediction({ pot }: { pot: PotCard }) {
   )
 }
 
-function MyPrediction({ pot, canPredict }: { pot: PotCard; canPredict: boolean }) {
+function MyPrediction({ pot, canPredict, shareCode }: { pot: PotCard; canPredict: boolean; shareCode?: string }) {
   const { user } = useAuth()
   const mine = useApi<PredictionView>(user ? `/api/pots/${pot.id}/predictions/me` : null, LIVE_REFRESH_MS)
   const existing = mine.data?.prediction ?? null
@@ -74,7 +81,7 @@ function MyPrediction({ pot, canPredict }: { pot: PotCard; canPredict: boolean }
       <Card size="sm">
         <CardContent className="space-y-3">
           {canPredict ? (
-            <PredictionForm potId={pot.id} match={pot.match} existing={existing} onSaved={mine.reload} />
+            <PredictionForm potId={pot.id} match={pot.match} existing={existing} shareCode={shareCode} onSaved={mine.reload} />
           ) : existing ? (
             <p className="text-lg font-bold">
               {pot.match.homeTeam} {existing.homeGoals} – {existing.awayGoals} {pot.match.awayTeam}
@@ -133,9 +140,12 @@ function Settlement({ pot }: { pot: PotCard }) {
   )
 }
 
-function Predictions({ pot, locked }: { pot: PotCard; locked: boolean }) {
+function Predictions({ pot, locked, shareCode }: { pot: PotCard; locked: boolean; shareCode?: string }) {
   const { user } = useAuth()
-  const board = useApi<Leaderboard>(locked && user ? `/api/pots/${pot.id}/leaderboard` : null, LIVE_REFRESH_MS)
+  const board = useApi<Leaderboard>(
+    locked && user ? `/api/pots/${pot.id}/leaderboard${queryString({ code: shareCode })}` : null,
+    LIVE_REFRESH_MS,
+  )
 
   return (
     <Section title="Leaderboard">
@@ -162,9 +172,13 @@ function Predictions({ pot, locked }: { pot: PotCard; locked: boolean }) {
 export default function PotDetailPage() {
   const { id = '' } = useParams()
   const { user } = useAuth()
-  const query = useApi<{ pot: PotCard }>(`/api/discover/pots/${id}`, LIVE_REFRESH_MS)
+  const shareCode = useSearchParams()[0].get('code') ?? undefined
+  const query = useApi<{ pot: PotCard }>(`/api/discover/pots/${id}${queryString({ code: shareCode })}`, LIVE_REFRESH_MS)
 
   if (query.loading) return <Loading />
+  if (query.error?.status === 404) {
+    return <Empty>This pot doesn't exist, or it's private. Ask the potter for its link.</Empty>
+  }
   if (query.error || !query.data) return <ErrorNote error={query.error ?? new Error('Pot not found.')} onRetry={query.reload} />
 
   const { pot } = query.data
@@ -176,6 +190,11 @@ export default function PotDetailPage() {
     <>
       <Card>
         <CardContent className="space-y-4">
+          {pot.isPrivate && (
+            <Badge variant="outline" className="gap-1">
+              <Lock aria-hidden className="size-3" /> Private pot
+            </Badge>
+          )}
           <MatchHeader match={pot.match} large />
           <dl className="grid grid-cols-2 gap-4 border-t border-border pt-4 sm:grid-cols-4">
             <Fact label="Prize" value={formatMoney(pot.prizeAmountMinorUnits, pot.currency)} />
@@ -185,6 +204,7 @@ export default function PotDetailPage() {
           </dl>
           {!locked && !closed && <p className="text-xs text-muted-foreground">Predictions lock {formatKickoff(pot.predictionLocksAt)}.</p>}
           {closed && <p className="text-sm text-destructive">This pot was cancelled. Any stake is refunded.</p>}
+          {!closed && <ShareButtons pot={pot} />}
         </CardContent>
       </Card>
 
@@ -192,8 +212,8 @@ export default function PotDetailPage() {
         <Empty>This pot pays out in {pot.currency} and is only open to players in {pot.countryCode}.</Empty>
       )}
       {!closed && !user && pot.status === 'Open' && !locked && <GuestPrediction pot={pot} />}
-      {!closed && user && <MyPrediction pot={pot} canPredict={canPredict} />}
-      {!closed && <Predictions pot={pot} locked={locked} />}
+      {!closed && user && <MyPrediction pot={pot} canPredict={canPredict} shareCode={shareCode} />}
+      {!closed && <Predictions pot={pot} locked={locked} shareCode={shareCode} />}
       <Settlement pot={pot} />
     </>
   )

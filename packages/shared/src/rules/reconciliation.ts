@@ -2,7 +2,7 @@
 // happened with what the immutable ledger recorded, and flag anything that
 // looks like a leak, a duplicate, or fraud. No I/O so every rule is testable.
 
-import { splitPrizePool } from "./settlement.js";
+import { refundAmountFor, splitPrizePool } from "./settlement.js";
 
 export type FindingSeverity = "critical" | "high" | "medium";
 
@@ -46,6 +46,8 @@ export interface ReconPot {
   updatedAt: Date;
   /** Cancelled while still unfunded, so no refund is owed. */
   cancelledBeforeFunding: boolean;
+  /** Reason recorded when the pot was cancelled; decides the refund amount owed. */
+  refundReason?: string | null;
   predictionCount: number;
 }
 
@@ -183,8 +185,9 @@ export function reconcile({ pots, groups, participants, sharedAccounts, now }: R
     if (refunds.length > 0 && !["Cancelled", "Refunded"].includes(pot.status)) {
       flag("REFUND_WITHOUT_CANCELLATION", "high", `Refund recorded while the pot is ${pot.status}.`);
     }
-    if (refunds.length > 0 && total(refunds) !== pot.prizeAmountMinorUnits) {
-      flag("REFUND_AMOUNT_MISMATCH", "high", `Refunded ${total(refunds)} but prize is ${pot.prizeAmountMinorUnits}.`);
+    const refundOwed = refundAmountFor(pot.prizeAmountMinorUnits, pot.refundReason);
+    if (refunds.length > 0 && total(refunds) !== refundOwed) {
+      flag("REFUND_AMOUNT_MISMATCH", "high", `Refunded ${total(refunds)} but ${refundOwed} is owed.`);
     }
     if (pot.status === "Cancelled" && !pot.cancelledBeforeFunding && refunds.length === 0 && quiet) {
       flag("REFUND_MISSING", "high", "Funded pot was cancelled but no refund was initiated.");
@@ -224,7 +227,7 @@ export interface CurrencyTotals {
   platformFeeMinorUnits: number;
 }
 
-/** Money in/out per currency; the platform fee counts only for pots that actually paid out. */
+/** Money in/out per currency; the platform fee counts for pots that paid out or were refunded with no winner. */
 export function summarizeLedger(pots: ReconPot[], groups: ReconLedgerGroup[]): Record<string, CurrencyTotals> {
   const summary: Record<string, CurrencyTotals> = {};
   const row = (currency: string) =>
@@ -238,7 +241,8 @@ export function summarizeLedger(pots: ReconPot[], groups: ReconLedgerGroup[]): R
     });
 
   for (const pot of pots) {
-    if (pot.status === "Paid") row(pot.currency).platformFeeMinorUnits += splitPrizePool(pot.prizeAmountMinorUnits).platformFee;
+    const keptFee = pot.status === "Paid" || (pot.refundReason === "no-winner" && (pot.status === "Cancelled" || pot.status === "Refunded"));
+    if (keptFee) row(pot.currency).platformFeeMinorUnits += splitPrizePool(pot.prizeAmountMinorUnits).platformFee;
   }
   for (const [type, actions] of Object.entries(actionsByType(groups))) {
     for (const action of actions) {

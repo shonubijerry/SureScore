@@ -1,42 +1,30 @@
 import { OpenAPIRoute, UnauthorizedException, contentJson } from "chanfana";
 import { z } from "zod";
 import { createDbClient } from "@surescore/db";
-import { verifyPassword } from "../../lib/password.js";
-import { createSession } from "../../lib/auth.js";
+import { normalizeEmail } from "@surescore/shared";
+import { verifyPassword } from "../../modules/auth/password.js";
+import { createSession } from "../../modules/auth/session.js";
 import type { AppContext } from "../../types.js";
-
-const userResponseSchema = z.object({
-	id: z.string(),
-	email: z.string(),
-	countryCode: z.string(),
-	displayName: z.string().nullable(),
-	role: z.string(),
-});
+import { emailSchema, sessionResponseSchema, userView } from "./schema.js";
 
 export class LoginEndpoint extends OpenAPIRoute {
 	schema = {
 		tags: ["Auth"],
 		summary: "Log in with email and password",
 		request: {
-			body: contentJson(z.object({ email: z.email(), password: z.string() })),
+			body: contentJson(z.object({ email: emailSchema, password: z.string() })),
 		},
 		responses: {
-			"200": {
-				description: "Logged in",
-				...contentJson(
-					z.object({ token: z.string(), expiresAt: z.iso.datetime(), user: userResponseSchema }),
-				),
-			},
+			"200": { description: "Logged in", ...contentJson(sessionResponseSchema) },
 			...UnauthorizedException.schema(),
 		},
 	};
 
 	async handle(c: AppContext) {
 		const { body } = await this.getValidatedData<typeof this.schema>();
-		const email = body.email.trim().toLowerCase();
 
 		const db = createDbClient(c.env.DB);
-		const user = await db.user.findUnique({ where: { email } });
+		const user = await db.user.findUnique({ where: { email: normalizeEmail(body.email) } });
 
 		// Verify against a dummy hash when the user is missing so response
 		// timing doesn't reveal whether the email is registered.
@@ -49,17 +37,6 @@ export class LoginEndpoint extends OpenAPIRoute {
 		}
 
 		const { token, expiresAt } = await createSession(c.env.SESSIONS, c.env.AUTH_SECRET, user.id);
-
-		return c.json({
-			token,
-			expiresAt: expiresAt.toISOString(),
-			user: {
-				id: user.id,
-				email: user.email,
-				countryCode: user.countryCode,
-				displayName: user.displayName,
-				role: user.role,
-			},
-		});
+		return c.json({ token, expiresAt: expiresAt.toISOString(), user: userView(user) });
 	}
 }

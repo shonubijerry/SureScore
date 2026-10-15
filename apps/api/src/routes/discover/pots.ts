@@ -1,12 +1,13 @@
 import { OpenAPIRoute, NotFoundException, contentJson } from "chanfana";
 import { z } from "zod";
 import { createDbClient } from "@surescore/db";
-import { pageArgs, pageQuery, toPage } from "../../lib/pagination.js";
+import { pageArgs, pageQuery, toPage } from "../../http/pagination.js";
 import type { AppContext } from "../../types.js";
-import { potCard, potCardInclude } from "../../lib/views.js";
+import { potCard, potCardInclude } from "../../http/views.js";
+import { assertPotAccess } from "../../modules/pots/pot-access.js";
 import { potCardSchema } from "../pots/schema.js";
 
-// Pots people can still browse; Draft (unfunded) and settled/cancelled pots stay out of discovery.
+// Pots people can still browse; Draft (unfunded), settled/cancelled and private pots stay out of discovery.
 const DISCOVERABLE_STATUSES = ["Open", "Locked", "Live"];
 
 export class ListPublicPotsEndpoint extends OpenAPIRoute {
@@ -36,6 +37,7 @@ export class ListPublicPotsEndpoint extends OpenAPIRoute {
 		const rows = await createDbClient(c.env.DB).pot.findMany({
 			where: {
 				status: { in: DISCOVERABLE_STATUSES },
+				isPrivate: false,
 				...(query.eventId && { eventId: query.eventId }),
 				...(query.countryCode && { countryCode: query.countryCode.toUpperCase() }),
 				...(Object.keys(kickoff).length && { event: { kickoffTimeUtc: kickoff } }),
@@ -53,8 +55,11 @@ export class ListPublicPotsEndpoint extends OpenAPIRoute {
 export class GetPublicPotEndpoint extends OpenAPIRoute {
 	schema = {
 		tags: ["Discovery"],
-		summary: "Public pot detail: prize, match state and live score",
-		request: { params: z.object({ id: z.string() }) },
+		summary: "Pot detail: prize, match state and live score. Private pots need the share code, or a signed-in potter/player.",
+		request: {
+			params: z.object({ id: z.string() }),
+			query: z.object({ code: z.string().optional().describe("Share code from the pot's link") }),
+		},
 		responses: {
 			"200": { description: "Pot", ...contentJson(z.object({ pot: potCardSchema })) },
 			...NotFoundException.schema(),
@@ -62,9 +67,11 @@ export class GetPublicPotEndpoint extends OpenAPIRoute {
 	};
 
 	async handle(c: AppContext) {
-		const { params } = await this.getValidatedData<typeof this.schema>();
-		const pot = await createDbClient(c.env.DB).pot.findUnique({ where: { id: params.id }, include: potCardInclude });
+		const { params, query } = await this.getValidatedData<typeof this.schema>();
+		const db = createDbClient(c.env.DB);
+		const pot = await db.pot.findUnique({ where: { id: params.id }, include: potCardInclude });
 		if (!pot || pot.status === "Draft") throw new NotFoundException("Pot not found.");
+		await assertPotAccess(db, pot, { userId: c.get("userId"), shareCode: query.code });
 		return c.json({ pot: potCard(pot) });
 	}
 }

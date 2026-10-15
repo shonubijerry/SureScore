@@ -2,11 +2,11 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Section } from '../../components/bits'
-import { queryString } from '../../lib/api'
-import { formatMoney } from '../../lib/format'
-import type { LedgerRow } from '../../lib/types'
-import { DataTable, inputClass, toneFor, usePaged, when } from './kit'
+import { Section } from '../../../components/bits'
+import { queryString } from '../../../lib/api'
+import { formatMoney } from '../../../lib/format'
+import type { LedgerRow } from '../../../lib/types'
+import { DataTable, inputClass, toneFor, usePaged, when } from '../components/kit'
 
 export default function Ledger() {
   const [form, setForm] = useState({ q: '', type: '', status: '' })
@@ -47,7 +47,7 @@ export default function Ledger() {
           { header: 'Type', cell: (r) => r.type },
           { header: 'Status', cell: (r) => <Badge variant={toneFor(r.status)}>{r.status}</Badge> },
           { header: 'Amount', cell: (r) => formatMoney(r.amountMinorUnits, r.currency) },
-          { header: 'User', cell: (r) => r.user?.email ?? r.userId },
+          { header: 'User', cell: (r) => r.user?.email ?? r.user?.phone ?? r.userId },
           {
             header: 'Pot',
             cell: (r) => (

@@ -5,7 +5,7 @@
 //
 // Site API endpoint: https://site.api.espn.com/apis/site/v2/sports/soccer/:league/scoreboard
 
-import { getSportsProviderConfig } from '@surescore/shared'
+import { getSportsProviderConfig, leagueCodes } from '@surescore/shared'
 import type { FinalResult, FixturesQuery, MatchStatus, SportsEvent, SportsProvider } from '@surescore/shared'
 
 export interface EspnSportsProviderConfig {
@@ -179,7 +179,7 @@ export class EspnSportsProvider implements SportsProvider {
 	}
 
 	private configuredLeagues(): string[] {
-		return this.leagues ?? getSportsProviderConfig(this.id)?.leagues ?? []
+		return this.leagues ?? leagueCodes(this.id)
 	}
 
 	private async fetchScoreboard(league: string, date?: Date): Promise<SportsEvent[]> {

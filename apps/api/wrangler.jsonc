@@ -5,6 +5,21 @@
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
+	// Non-secret config. Secrets (AUTH_SECRET, PAYSTACK_SECRET_KEY, KUDISMS_API_KEY, ...)
+	// live in .dev.vars locally and `wrangler secret put` in production.
+	"vars": {
+		"PAYSTACK_CUSTOMER_EMAIL": "info@corestack.com.ng",
+		// Must be a Corporate Sender ID approved on the KudiSMS account (my.kudisms.net/user/scid).
+		"KUDISMS_SENDER_ID": "SureScore",
+		// Sender for sign-in codes. The domain must be onboarded in Cloudflare
+		// (Compute > Email Service > Email Sending > Onboard Domain).
+		"EMAIL_FROM_ADDRESS": "no-reply@corestack.com.ng",
+		"EMAIL_FROM_NAME": "SureScore"
+	},
+	// Cloudflare Email Service. Deployed, this sends real email. Under
+	// `wrangler dev` it is simulated: emails (and their codes) are printed to
+	// the console and saved to files. Add "remote": true to send real email locally.
+	"send_email": [{ "name": "EMAIL" }],
 	"observability": {
 		"enabled": true
 	},

@@ -13,10 +13,10 @@ import {
 	type ReconLedgerGroup,
 	type ReconPot,
 } from "@surescore/shared";
-import { inChunks } from "./chunk.js";
-import { pageArgs, toPage } from "./pagination.js";
-import { fail } from "./pot-service.js";
-import type { AdminPotService } from "./admin-pots.js";
+import { inChunks } from "../../platform/chunk.js";
+import { pageArgs, toPage } from "../../http/pagination.js";
+import { fail } from "../pots/pot-service.js";
+import type { AdminPotService } from "../admin/pots.js";
 
 const DAY_MS = 86_400_000;
 export const DEFAULT_SCOPE_DAYS = 7;
@@ -35,7 +35,7 @@ export class ReconciliationService {
 		const scopeFrom = new Date(now.getTime() - days * DAY_MS);
 		const { pots, potIds } = await this.loadPots(scopeFrom);
 
-		const [groups, predictionCounts, unfundedCancels] = await Promise.all([
+		const [groups, predictionCounts, cancellations] = await Promise.all([
 			inChunks(potIds, (ids) =>
 				this.db.ledgerEntry.groupBy({
 					by: ["idempotencyKey", "potId", "userId", "type", "status", "currency"],
@@ -49,8 +49,8 @@ export class ReconciliationService {
 			),
 			inChunks(potIds, (ids) =>
 				this.db.potStateTransition.findMany({
-					where: { potId: { in: ids }, toStatus: "Cancelled", fromStatus: "Draft" },
-					select: { potId: true },
+					where: { potId: { in: ids }, toStatus: "Cancelled" },
+					select: { potId: true, fromStatus: true, reason: true },
 				}),
 			),
 		]);
@@ -67,10 +67,11 @@ export class ReconciliationService {
 			lastAt: g._max.createdAt ?? now,
 		}));
 		const counts = new Map(predictionCounts.map((p) => [p.potId, p._count._all]));
-		const unfunded = new Set(unfundedCancels.map((t) => t.potId));
+		const cancelled = new Map(cancellations.map((t) => [t.potId, t]));
 		const reconPots: ReconPot[] = pots.map((p) => ({
 			...p,
-			cancelledBeforeFunding: unfunded.has(p.id),
+			cancelledBeforeFunding: cancelled.get(p.id)?.fromStatus === "Draft",
+			refundReason: cancelled.get(p.id)?.reason ?? null,
 			predictionCount: counts.get(p.id) ?? 0,
 		}));
 

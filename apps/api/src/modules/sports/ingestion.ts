@@ -3,9 +3,9 @@
 // so a provider outage never reaches core logic as anything other than a
 // "keep serving the last cached data" outcome.
 
-import { log } from "./logger.js"
-import { computeFreshness, getSportsProviderConfig, type FixturesQuery, type SportsProvider } from "@surescore/shared";
-import type { SportsEventCacheRecord, SportsEventCacheStore } from "./sports-cache-repository.js";
+import { log } from "../../platform/logger.js"
+import { computeFreshness, leagueCodes, type FixturesQuery, type SportsProvider } from "@surescore/shared";
+import type { SportsEventCacheRecord, SportsEventCacheStore } from "./cache-repository.js";
 
 export interface IngestionFailure {
   league?: string;
@@ -18,7 +18,7 @@ export interface IngestionResult {
 }
 
 function leaguesFor(provider: SportsProvider): string[] {
-  return getSportsProviderConfig(provider.id)?.leagues ?? [];
+  return leagueCodes(provider.id);
 }
 
 /** T4.2: league mapping comes from shared sports provider config, never hardcoded per adapter call site. */

@@ -1,7 +1,7 @@
 // Pure pot lifecycle rules: states, allowed transitions, lock/cancel cutoffs
 // and automatic state derivation. No I/O so every rule is unit-testable.
 
-import type { MatchStatus } from "./providers/sports-provider.js";
+import type { MatchStatus } from "../providers/sports-provider.js";
 
 export const potStatuses = [
   "Draft",

@@ -3,7 +3,7 @@
 // checked against one list of actions and one code path.
 
 import type { PrismaClient } from "@surescore/db";
-import { log } from "./logger.js";
+import { log } from "../../platform/logger.js";
 
 export const AUDIT_ACTIONS = [
 	"note",

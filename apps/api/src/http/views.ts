@@ -2,11 +2,18 @@
 
 import { computeFreshness, predictionLockTime, teamLogoUrl } from "@surescore/shared";
 import type { Pot, SportsEventCache } from "@surescore/db";
-import { toRecord, type SportsEventCacheRecord } from "./sports-cache-repository.js";
+import { toRecord, type SportsEventCacheRecord } from "../modules/sports/cache-repository.js";
 
-/** A cached match plus its cache id (the id pots reference) and computed freshness. */
+const UNPLAYED: readonly string[] = ["scheduled", "postponed"];
+
+/**
+ * A cached match plus its cache id (the id pots reference) and computed
+ * freshness. Providers report 0-0 before kickoff, so unplayed matches carry
+ * no score at all.
+ */
 export const matchView = (record: SportsEventCacheRecord, now = new Date()) => ({
 	...record,
+	...(UNPLAYED.includes(record.status) && { homeScore: null, awayScore: null }),
 	cacheId: `${record.provider}:${record.id}`,
 	homeTeamLogoUrl: teamLogoUrl(record.provider, record.homeTeamId),
 	awayTeamLogoUrl: teamLogoUrl(record.provider, record.awayTeamId),
@@ -25,6 +32,7 @@ export const potCard = (pot: PotWithEvent, now = new Date()) => ({
 	currency: pot.currency,
 	prizeAmountMinorUnits: pot.prizeAmountMinorUnits,
 	winnerCount: pot.winnerCount,
+	isPrivate: pot.isPrivate,
 	shareCode: pot.shareCode,
 	predictionCount: pot._count.predictions,
 	predictionLocksAt: predictionLockTime(pot.event.kickoffTimeUtc).toISOString(),

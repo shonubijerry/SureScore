@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { fromHono } from "chanfana";
-import { requireAuth } from "../../lib/middleware.js";
+import { requireAuth } from "../../http/middleware.js";
 import type { AppEnv } from "../../types.js";
 import { ListPayoutAccountsEndpoint } from "./list.js";
 import { CreatePayoutAccountEndpoint } from "./create.js";

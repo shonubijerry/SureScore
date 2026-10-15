@@ -6,12 +6,12 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { hasPermission, type Permission } from '@surescore/shared'
 import { Button } from '@/components/ui/button'
-import { Empty, ErrorNote, Loading } from '../../components/bits'
-import { api } from '../../lib/api'
-import { useAuth } from '../../lib/auth'
-import { formatKickoff } from '../../lib/format'
-import type { Page } from '../../lib/types'
-import { useApi } from '../../lib/use-api'
+import { Empty, ErrorNote, Loading } from '../../../components/bits'
+import { api } from '../../../lib/api'
+import { useAuth } from '../../auth/auth-context'
+import { formatKickoff } from '../../../lib/format'
+import type { Page } from '../../../lib/types'
+import { useApi } from '../../../lib/use-api'
 
 export const inputClass = 'w-full rounded-xl border border-border bg-background px-3 py-2 text-sm'
 export const when = (iso: string | null) => (iso ? formatKickoff(iso) : '—')

@@ -1,7 +1,7 @@
 import { OpenAPIRoute, NotFoundException, contentJson } from "chanfana";
 import { z } from "zod";
 import { createDbClient } from "@surescore/db";
-import { recordAudit } from "../../lib/audit.js";
+import { recordAudit } from "../../modules/admin/audit.js";
 import type { AppContext } from "../../types.js";
 
 export class DeletePayoutAccountEndpoint extends OpenAPIRoute {

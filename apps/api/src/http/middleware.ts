@@ -1,6 +1,6 @@
 import { createMiddleware } from "hono/factory";
 import { createDbClient } from "@surescore/db";
-import { verifySession, AuthError } from "./auth.js";
+import { verifySession, AuthError } from "../modules/auth/session.js";
 import { hasPermission, isStaffRole, type Permission } from "@surescore/shared";
 import type { AppContext, AppEnv } from "../types.js";
 
@@ -21,6 +21,19 @@ export const requireAuth = createMiddleware<AppEnv>(async (context, next) => {
 		throw error;
 	}
 
+	await next();
+});
+
+/** Sets `userId` when a valid session token is sent; otherwise continues anonymously. */
+export const optionalAuth = createMiddleware<AppEnv>(async (context, next) => {
+	const token = context.req.header("Authorization")?.replace(/^Bearer\s+/i, "");
+	if (token) {
+		try {
+			context.set("userId", (await verifySession(context.env.SESSIONS, context.env.AUTH_SECRET, token)).userId);
+		} catch (error) {
+			if (!(error instanceof AuthError)) throw error;
+		}
+	}
 	await next();
 });
 

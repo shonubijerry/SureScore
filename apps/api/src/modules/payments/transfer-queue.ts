@@ -6,9 +6,9 @@
 // admin follow-up. Each attempt outcome is appended to the immutable ledger,
 // and actions already pending/successful in the ledger are never resent.
 
-import { log } from "./logger.js"
+import { log } from "../../platform/logger.js"
 import type { PaymentProvider, PaymentResult, PayoutRequest, RefundRequest } from "@surescore/shared";
-import { createProviderRegistry } from "../providers/registry.js";
+import { createProviderRegistry } from "../../providers/registry.js";
 import { ensureRecipient } from "./payout-recipient.js";
 import { PrismaLedgerStore, type LedgerStore } from "./ledger.js";
 
@@ -32,9 +32,15 @@ export const retryDelaySeconds = (attempts: number) =>
 type ResolveRecipient = (provider: PaymentProvider, request: PayoutRequest) => Promise<string>;
 
 async function executeTransfer(provider: PaymentProvider, job: TransferJob, resolveRecipient: ResolveRecipient): Promise<PaymentResult> {
-	if (job.type === "refund") return provider.refund(job.request);
-	const recipientCode = job.request.recipientCode ?? (await resolveRecipient(provider, job.request));
-	return provider.payout({ ...job.request, recipientCode });
+	if (job.type === "payout") {
+		const recipientCode = job.request.recipientCode ?? (await resolveRecipient(provider, job.request));
+		return provider.payout({ ...job.request, recipientCode });
+	}
+	// A refund with a refund account is a transfer to it; legacy pots reverse the funding payment.
+	const { payoutAccountId, ...refund } = job.request;
+	if (!payoutAccountId) return provider.refund(refund);
+	const transfer: PayoutRequest = { ...refund, payoutAccountId };
+	return provider.payout({ ...transfer, recipientCode: await resolveRecipient(provider, transfer) });
 }
 
 export async function handleTransferBatch(

@@ -2,11 +2,12 @@ import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
 import { sportsProviderConfigs } from "@surescore/shared";
 import type { AppContext } from "../../types.js";
+import { leagueSchema } from "../sports/schema.js";
 
 const sportsProviderSchema = z.object({
 	id: z.string(),
 	name: z.string(),
-	leagues: z.array(z.string()),
+	leagues: z.array(leagueSchema).optional(),
 });
 
 export class ListSportsProvidersEndpoint extends OpenAPIRoute {

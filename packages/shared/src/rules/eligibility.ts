@@ -1,7 +1,7 @@
 // Country-driven eligibility policies. Keep provider-specific logic out of
 // here; this module only ever reasons about country codes and config.
 
-import { getCountryConfig, isCountrySupported } from "./country-config.js";
+import { getCountryConfig, isCountrySupported } from "../config/country-config.js";
 
 export class EligibilityError extends Error {
   constructor(message: string) {

@@ -3,12 +3,12 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { potStatuses } from '@surescore/shared'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Empty, Section } from '../../components/bits'
-import { api, queryString } from '../../lib/api'
-import { formatMoney } from '../../lib/format'
-import type { AdminPotDetail, AdminPotRow } from '../../lib/types'
-import { useApi } from '../../lib/use-api'
-import { Can, DataTable, Query, ReasonForm, Row, inputClass, toneFor, usePaged, when } from './kit'
+import { Empty, Section } from '../../../components/bits'
+import { api, queryString } from '../../../lib/api'
+import { formatMoney } from '../../../lib/format'
+import type { AdminPotDetail, AdminPotRow } from '../../../lib/types'
+import { useApi } from '../../../lib/use-api'
+import { Can, DataTable, Query, ReasonForm, Row, inputClass, toneFor, usePaged, when } from '../components/kit'
 
 export function PotList() {
   const [status, setStatus] = useState('')
@@ -132,7 +132,7 @@ export function PotDetail() {
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant={toneFor(r.status)}>{r.status}</Badge>
                       <b>{r.type}</b> {formatMoney(r.amountMinorUnits, r.currency)}
-                      <span className="text-muted-foreground">{r.user?.email ?? r.userId}</span>
+                      <span className="text-muted-foreground">{r.user?.email ?? r.user?.phone ?? r.userId}</span>
                     </div>
                     <p className="break-all text-xs text-muted-foreground">
                       {r.provider} · {r.reference ?? r.idempotencyKey} · {when(r.createdAt)} {r.detail && `· ${r.detail}`}

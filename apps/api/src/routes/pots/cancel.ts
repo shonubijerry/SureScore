@@ -1,5 +1,5 @@
 import { OpenAPIRoute } from "chanfana";
-import { PotService } from "../../lib/pot-service.js";
+import { PotService } from "../../modules/pots/pot-service.js";
 import type { AppContext } from "../../types.js";
 import { potIdParams, potResponse } from "./schema.js";
 

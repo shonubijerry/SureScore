@@ -1,16 +1,24 @@
 import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
 import { createDbClient } from "@surescore/db";
-import { pageArgs, pageQuery, toPage } from "../../lib/pagination.js";
+import { pageArgs, pageQuery, toPage } from "../../http/pagination.js";
 import type { AppContext } from "../../types.js";
-import { potCard, potCardInclude } from "../../lib/views.js";
+import { potCard, potCardInclude } from "../../http/views.js";
 import { potCardSchema } from "./schema.js";
 
 export class ListPotsEndpoint extends OpenAPIRoute {
 	schema = {
 		tags: ["Pots"],
 		summary: "List pots created by the current user",
-		request: { query: z.object(pageQuery) },
+		request: {
+			query: z.object({
+				includeCancelled: z
+					.enum(["true", "false"])
+					.default("false")
+					.describe("Include cancelled and refunded pots (hidden by default)"),
+				...pageQuery,
+			}),
+		},
 		responses: {
 			"200": { description: "Pots", ...contentJson(z.object({ pots: z.array(potCardSchema), nextCursor: z.string().nullable() })) },
 		},
@@ -19,7 +27,10 @@ export class ListPotsEndpoint extends OpenAPIRoute {
 	async handle(c: AppContext) {
 		const { query } = await this.getValidatedData<typeof this.schema>();
 		const rows = await createDbClient(c.env.DB).pot.findMany({
-			where: { potterId: c.get("userId") },
+			where: {
+				potterId: c.get("userId"),
+				...(query.includeCancelled === "false" && { status: { notIn: ["Cancelled", "Refunded"] } }),
+			},
 			include: potCardInclude,
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 			...pageArgs(query),

@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { ListState, Section } from '../components/bits'
-import { MatchCard } from '../components/match-card'
-import { PotCard } from '../components/pot-card'
-import { useAuth } from '../lib/auth'
-import type { Match, PredictedPot } from '../lib/types'
-import { useApi } from '../lib/use-api'
+import { ListState, Section } from '../../../components/bits'
+import { LeagueGrid } from '../../matches/components/league-grid'
+import { MatchTabs, type MatchTab } from '../../matches/components/match-tabs'
+import { PotCard } from '../../pots/components/pot-card'
+import { useAuth } from '../../auth/auth-context'
+import type { PredictedPot } from '../../../lib/types'
+import { useApi } from '../../../lib/use-api'
 
 // Live scores refresh server-side every 10 minutes; polling faster adds nothing.
 const LIVE_REFRESH_MS = 120_000
@@ -32,35 +33,11 @@ function MyMatches() {
   )
 }
 
-function UpcomingMatches() {
-  const query = useApi<{ matches: Match[] }>('/api/sports/matches/upcoming?limit=10')
-  const list = { ...query, data: query.data?.matches ?? null }
-
-  return (
-    <ListState query={list} empty="No upcoming matches yet.">
-      {(items) => items.map((match) => <MatchCard key={match.cacheId} match={match} />)}
-    </ListState>
-  )
-}
-
-function PopularMatches() {
-  const query = useApi<{ matches: (Match & { potCount: number })[] }>('/api/discover/matches/popular')
-  const list = { ...query, data: query.data?.matches ?? null }
-
-  return (
-    <ListState query={list} empty="No upcoming matches yet.">
-      {(items) =>
-        items.map((match) => (
-          <MatchCard
-            key={match.cacheId}
-            match={match}
-            footer={<p className="text-xs text-muted-foreground">{match.potCount} active pot{match.potCount === 1 ? '' : 's'}</p>}
-          />
-        ))
-      }
-    </ListState>
-  )
-}
+const HOME_TABS: MatchTab[] = [
+  { key: 'popular', label: 'Popular', path: '/api/discover/matches/popular', empty: 'No popular matches yet.' },
+  { key: 'upcoming', label: 'Upcoming', path: '/api/sports/matches/upcoming', empty: 'No upcoming matches yet. Fixtures refresh every few hours.' },
+  { key: 'live', label: 'Live', path: '/api/sports/matches/live', empty: 'No matches are live right now.' },
+]
 
 export default function HomePage() {
   const { user } = useAuth()
@@ -72,20 +49,16 @@ export default function HomePage() {
         </Section>
       ) : null}
       <Section
-        title="Popular matches"
+        title="Matches"
         action={
           <Link to="/pots" className="text-sm font-semibold">
             All pots →
           </Link>
         }
       >
-        <PopularMatches />
+        <MatchTabs label="Matches" tabs={HOME_TABS} />
       </Section>
-      {!user && (
-        <Section title="Upcoming matches">
-          <UpcomingMatches />
-        </Section>
-      )}
+      <LeagueGrid countryCode={user?.countryCode} />
       <Link to="/matches" className="block">
         <Button size="lg" className="h-12 w-full text-base">
           Browse matches & create a pot

@@ -27,13 +27,24 @@ export interface HealthResponse {
   timestamp: string;
 }
 
-export * from "./country-config.js";
-export * from "./eligibility.js";
+// Configuration: countries, currencies, provider and league mapping, banks.
+export * from "./config/country-config.js";
+export * from "./config/banks.js";
+
+// Identity: phone/email formats, account-name matching, roles and permissions.
+export * from "./identity/phone.js";
+export * from "./identity/email.js";
+export * from "./identity/name-match.js";
+export * from "./identity/roles.js";
+
+// Product rules (pure, no I/O): pot lifecycle, scoring, settlement,
+// eligibility, reconciliation and sports-data freshness.
+export * from "./rules/pot-rules.js";
+export * from "./rules/scoring.js";
+export * from "./rules/settlement.js";
+export * from "./rules/eligibility.js";
+export * from "./rules/reconciliation.js";
+export * from "./rules/cache-freshness.js";
+
+// Provider contracts and registry.
 export * from "./providers/index.js";
-export * from "./pot-rules.js";
-export * from "./scoring.js";
-export * from "./settlement.js";
-export * from "./reconciliation.js";
-export * from "./roles.js";
-export * from "./name-match.js";
-export * from "./banks.js";

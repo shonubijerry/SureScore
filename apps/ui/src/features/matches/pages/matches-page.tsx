@@ -1,7 +1,7 @@
-import { ListState, Section } from '../components/bits'
+import { ListState, Section } from '../../../components/bits'
 import { MatchCard } from '../components/match-card'
-import type { Match } from '../lib/types'
-import { useApi } from '../lib/use-api'
+import type { Match } from '../../../lib/types'
+import { useApi } from '../../../lib/use-api'
 
 export default function MatchesPage() {
   const query = useApi<{ matches: Match[] }>('/api/sports/matches/upcoming')

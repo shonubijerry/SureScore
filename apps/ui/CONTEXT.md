@@ -11,7 +11,19 @@
 - src/index.css: global styling and theme tokens
 - components/: reusable UI and configuration-driven shadcn-style components
 - components/theme-provider.tsx: theme state
-- lib/utils.ts: shared client utility helpers
+- lib/utils.ts: shared client utility helpers (shadcn `cn`)
+
+## Folder layout (src/)
+- features/{feature}/: everything for one product area, with pages/ (route screens, `*-page.tsx`) and components/ (used only by that feature)
+  - auth/: auth-context.tsx (session + auth calls), pages (sign in/up, forgot password), components/otp-step.tsx
+  - matches/: pages (matches, match detail, league), components (match card, match tabs, league grid)
+  - pots/: pages (public pots, pot detail, create pot, my pots), components (pot card, prediction form, leaderboard, share buttons), share.ts
+  - account/: profile page, payout accounts + modal
+  - admin/: back-office pages and components (admin layout, table kit)
+  - home/, help/: home page, FAQ
+- components/: generic building blocks used across features (layout, modal, bits, info tip, phone field)
+- lib/: app-wide plumbing (API client, useApi/usePagedMatches hooks, formatters, API types)
+- Put new code in its feature folder; promote it to components/ or lib/ only once a second feature needs it
 
 ## Product conventions
 - Keep UI mobile-first and lightweight
@@ -21,9 +33,9 @@
 
 ## Important files
 - src/App.tsx (routes, lazy-loaded pages)
-- src/pages/* (home, pots, my-pots, matches, match-detail, pot-detail, create-pot, auth)
-- src/components/* (layout with mobile bottom nav, cards, leaderboard, prediction form)
-- src/lib/* (api client, useApi hook, auth context, formatters)
+- src/features/* (pages and feature components, see Folder layout)
+- src/components/* (layout with mobile bottom nav, shared building blocks)
+- src/lib/* (api client, hooks, formatters, types)
 - src/main.tsx
 - src/index.css
 - components/theme-provider.tsx

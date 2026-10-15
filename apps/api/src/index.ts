@@ -1,14 +1,15 @@
 import app from "./router.js";
 import { createProviderRegistry } from "./providers/registry.js";
-import { PrismaSportsEventCacheStore } from "./lib/sports-cache-repository.js";
-import { PotService } from "./lib/pot-service.js";
-import { SettlementService } from "./lib/settlement-service.js";
-import { handleTransferBatch, type TransferJob } from "./lib/transfer-queue.js";
-import { ReconciliationService } from "./lib/reconciliation-service.js";
-import { dispatchAlerts } from "./lib/alerts.js";
-import { log } from "./lib/logger.js";
-import { pruneJobRuns, trackJob } from "./lib/job-runs.js";
-import { invalidateStaleEvents, prefetchFixtures, refreshLiveScores } from "./lib/sports-ingestion.js";
+import { PrismaSportsEventCacheStore } from "./modules/sports/cache-repository.js";
+import { PotService } from "./modules/pots/pot-service.js";
+import { SettlementService } from "./modules/pots/settlement-service.js";
+import { handleTransferBatch, type TransferJob } from "./modules/payments/transfer-queue.js";
+import { ReconciliationService } from "./modules/payments/reconciliation-service.js";
+import { dispatchAlerts } from "./modules/admin/alerts.js";
+import { log } from "./platform/logger.js";
+import { pruneJobRuns, trackJob } from "./platform/job-runs.js";
+import { invalidateStaleEvents, prefetchFixtures, refreshLiveScores } from "./modules/sports/ingestion.js";
+import { pruneOldMatches } from "./modules/sports/cleanup.js";
 
 // Cron patterns from wrangler.jsonc "triggers.crons".
 const FIXTURE_PREFETCH_CRON = "0 */4 * * *";
@@ -37,6 +38,10 @@ export default {
 
 		if (controller.cron === FIXTURE_PREFETCH_CRON) {
 			await trackJob(env.DB, "fixture-prefetch", "sports", () => prefetchFixtures(provider, store));
+			// Old matches leave the cache unless one of their pots was paid for.
+			await trackJob(env.DB, "match-cleanup", "sports", async () => {
+				await pruneOldMatches(env.DB);
+			});
 			await pruneJobRuns(env.DB).catch((error) => log.error("job", "prune_failed", { error }));
 			return;
 		}

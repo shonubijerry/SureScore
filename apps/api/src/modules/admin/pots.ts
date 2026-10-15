@@ -6,9 +6,9 @@
 import { recordAudit, type AuditAction } from "./audit.js";
 import { createDbClient, type Pot } from "@surescore/db";
 import type { PotStatus } from "@surescore/shared";
-import { fail, PotService, type Actor } from "./pot-service.js";
-import { SettlementService } from "./settlement-service.js";
-import { pageArgs, toPage } from "./pagination.js";
+import { fail, PotService, type Actor } from "../pots/pot-service.js";
+import { SettlementService } from "../pots/settlement-service.js";
+import { pageArgs, toPage } from "../../http/pagination.js";
 
 export interface OverrideInput {
 	homeGoals: number;

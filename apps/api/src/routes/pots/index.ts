@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { fromHono } from "chanfana";
-import { requireAuth } from "../../lib/middleware.js";
-import { rateLimit, rateLimits } from "../../lib/rate-limit.js";
+import { requireAuth } from "../../http/middleware.js";
+import { rateLimit, rateLimits } from "../../http/rate-limit.js";
 import type { AppEnv } from "../../types.js";
 import { CreatePotEndpoint } from "./create.js";
 import { ListPotsEndpoint } from "./list.js";

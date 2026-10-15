@@ -1,9 +1,10 @@
 import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
 import { roles, staffRoles } from "@surescore/shared";
-import { AdminStaffService } from "../../lib/admin-staff.js";
-import { currentAlerts } from "../../lib/alerts.js";
-import { pageQuery } from "../../lib/pagination.js";
+import { emailSchema } from "../auth/schema.js";
+import { AdminStaffService } from "../../modules/admin/staff.js";
+import { currentAlerts } from "../../modules/admin/alerts.js";
+import { pageQuery } from "../../http/pagination.js";
 import type { AppContext } from "../../types.js";
 import { okResponse, reasonSchema } from "./schema.js";
 
@@ -30,10 +31,10 @@ export class CreateStaffEndpoint extends OpenAPIRoute {
 		request: {
 			body: contentJson(
 				z.object({
-					email: z.email(),
+					email: emailSchema.describe("Existing user to promote, or the new account's sign-in email"),
 					role: z.enum(staffRoles),
 					password: z.string().min(8).optional(),
-					displayName: z.string().trim().min(1).optional(),
+					displayName: z.string().trim().min(1).optional().describe("Full name (required for new accounts)"),
 					reason: reasonSchema,
 				}),
 			),

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { ListState, Section } from '../components/bits'
+import { ListState, Section } from '../../../components/bits'
 import { PotCard } from '../components/pot-card'
-import { api } from '../lib/api'
-import type { PotCard as Pot } from '../lib/types'
-import { useApi } from '../lib/use-api'
+import { ShareButtons } from '../components/share-buttons'
+import { api } from '../../../lib/api'
+import type { PotCard as Pot } from '../../../lib/types'
+import { useApi } from '../../../lib/use-api'
 
 /** A Draft pot is awaiting payment; it stays out of discovery until funding is verified. */
 function VerifyFunding({ pot, onDone }: { pot: Pot; onDone: () => void }) {
@@ -42,7 +43,14 @@ export default function MyPotsPage() {
   const [autoVerifying, setAutoVerifying] = useState(Boolean(verifyPotId))
   const [autoVerifyStatus, setAutoVerifyStatus] = useState<{ isError: boolean; message: string } | null>(null)
 
-  const query = useApi<{ pots: Pot[] }>('/api/pots')
+  const showCancelled = searchParams.get('cancelled') === '1'
+  const toggleCancelled = (show: boolean) => {
+    const next = new URLSearchParams(searchParams)
+    if (show) next.set('cancelled', '1')
+    else next.delete('cancelled')
+    setSearchParams(next, { replace: true })
+  }
+  const query = useApi<{ pots: Pot[] }>(`/api/pots${showCancelled ? '?includeCancelled=true' : ''}`)
   const list = { ...query, data: query.data?.pots ?? null }
 
   useEffect(() => {
@@ -109,7 +117,15 @@ export default function MyPotsPage() {
         </div>
       )}
 
-      <ListState query={list} empty="You haven't created a pot yet. Choose a match to get started.">
+      <label className="flex w-fit items-center gap-2 text-sm text-muted-foreground">
+        <input type="checkbox" className="size-4 accent-primary" checked={showCancelled} onChange={(e) => toggleCancelled(e.target.checked)} />
+        Show cancelled pots
+      </label>
+
+      <ListState
+        query={list}
+        empty={showCancelled ? "You haven't created a pot yet. Choose a match to get started." : 'No active pots. Choose a match to create one, or show cancelled pots.'}
+      >
         {(pots) =>
           pots.map((pot) =>
             pot.status === 'Draft' ? (
@@ -117,7 +133,9 @@ export default function MyPotsPage() {
                 <VerifyFunding pot={pot} onDone={query.reload} />
               </PotCard>
             ) : (
-              <PotCard key={pot.id} pot={pot} />
+              <PotCard key={pot.id} pot={pot}>
+                {['Open', 'Locked', 'Live'].includes(pot.status) && <ShareButtons pot={pot} />}
+              </PotCard>
             ),
           )
         }

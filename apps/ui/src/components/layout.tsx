@@ -2,7 +2,7 @@ import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { CalendarDays, CircleHelp, Home, LogIn, Shield, Trophy, UserRound, Wallet } from 'lucide-react'
 import { isStaffRole } from '@surescore/shared'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '../lib/auth'
+import { useAuth } from '../features/auth/auth-context'
 import { Loading } from './bits'
 
 const NAV = [

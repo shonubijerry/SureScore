@@ -1,4 +1,4 @@
-import { log } from './lib/logger.js'
+import { log } from './platform/logger.js'
 import { fromHono } from 'chanfana'
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
@@ -50,7 +50,8 @@ function healthResponse(database: D1Database | undefined) {
 }
 
 app.onError(async (err, c) => {
-	log.error("http", "unhandled", { path: c.req.path, error: err })
+	// Expected client errors (4xx) are not failures worth a stack trace.
+	if (!(err instanceof HTTPException) || err.status >= 500) log.error("http", "unhandled", { path: c.req.path, error: err })
 
 	if (err instanceof HTTPException) {
 		const res = err.getResponse()

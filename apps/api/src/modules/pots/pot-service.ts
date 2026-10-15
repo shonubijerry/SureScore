@@ -3,7 +3,7 @@
 // (resolved by country config) and the transfer queue. Every state change goes
 // through `transition`, which is the single place that writes the audit trail.
 
-import { log } from './logger.js'
+import { log } from '../../platform/logger.js'
 import { HTTPException } from 'hono/http-exception'
 import { createDbClient, type Pot } from '@surescore/db'
 import {
@@ -13,6 +13,7 @@ import {
 	getCountryConfig,
 	isMatchBookable,
 	nextAutomaticTransition,
+	refundAmountFor,
 	resolveSportsProviderForCountry,
 	MAX_WINNER_COUNT,
 	MIN_WINNER_COUNT,
@@ -21,9 +22,10 @@ import {
 	type PotStatus,
 	type RefundReason,
 } from '@surescore/shared'
-import { createProviderRegistry } from '../providers/registry.js'
-import { PrismaLedgerStore, type LedgerStore } from './ledger.js'
-import { enqueueTransfer, type TransferJob } from './transfer-queue.js'
+import { createProviderRegistry } from '../../providers/registry.js'
+import { PrismaLedgerStore, type LedgerStore } from '../payments/ledger.js'
+import { enqueueTransfer, type TransferJob } from '../payments/transfer-queue.js'
+import { pickPayoutAccount } from '../payments/payout-recipient.js'
 
 export interface Actor {
 	type: 'user' | 'system' | 'admin'
@@ -81,11 +83,25 @@ export class PotService {
 	/** Cancels a pot; anything already funded is refunded through the transfer queue. */
 	async cancel(pot: Pot, actor: Actor, reason: RefundReason) {
 		if (!(await this.transition(pot, 'Cancelled', actor, reason))) return false
-		if (pot.status !== 'Draft') await enqueueTransfer(this.env, PotService.refundJob(pot, reason))
+		if (pot.status !== 'Draft') await enqueueTransfer(this.env, await this.refundJobFor(pot, reason))
 		return true
 	}
 
-	static refundJob(pot: Pot, reason: RefundReason): TransferJob {
+	/**
+	 * Refund job for a pot. The refund is transferred to the potter's chosen
+	 * refund account, falling back to their default account if it was removed;
+	 * pots created before refund accounts existed reverse the funding payment.
+	 */
+	async refundJobFor(pot: Pot, reason: RefundReason): Promise<TransferJob> {
+		const accounts = await this.db.payoutAccount.findMany({
+			where: { userId: pot.potterId, deletedAt: null },
+			select: { id: true, countryCode: true, isDefault: true },
+		})
+		const account = accounts.find((a) => a.id === pot.refundAccountId) ?? pickPayoutAccount(accounts, pot.countryCode)
+		return PotService.refundJob(pot, reason, pot.refundAccountId ? account?.id : undefined)
+	}
+
+	static refundJob(pot: Pot, reason: RefundReason, payoutAccountId?: string): TransferJob {
 		return {
 			type: 'refund',
 			request: {
@@ -93,9 +109,10 @@ export class PotService {
 				userId: pot.potterId,
 				countryCode: pot.countryCode,
 				currency: pot.currency,
-				amountMinorUnits: pot.prizeAmountMinorUnits,
+				amountMinorUnits: refundAmountFor(pot.prizeAmountMinorUnits, reason),
 				reason,
 				originalReference: pot.fundingReference ?? '',
+				...(payoutAccountId && { payoutAccountId }),
 				idempotencyKey: `refund:${pot.id}`,
 			},
 		}
@@ -105,7 +122,17 @@ export class PotService {
 		return this.transition({ id: potId, status: 'Cancelled' }, 'Refunded', SYSTEM_ACTOR, 'refund successful')
 	}
 
-	async create(userId: string, input: { eventId: string; prizeAmountMinorUnits: number; winnerCount: number; callbackUrl?: string }) {
+	async create(
+		userId: string,
+		input: {
+			eventId: string
+			prizeAmountMinorUnits: number
+			winnerCount: number
+			refundAccountId: string
+			isPrivate?: boolean
+			callbackUrl?: string
+		},
+	) {
 		if (input.winnerCount < MIN_WINNER_COUNT || input.winnerCount > MAX_WINNER_COUNT) {
 			fail(400, `Winner count must be between ${MIN_WINNER_COUNT} and ${MAX_WINNER_COUNT}.`)
 		}
@@ -117,11 +144,16 @@ export class PotService {
 		const event = await this.db.sportsEventCache.findUnique({ where: { id: input.eventId } })
 		if (!event) fail(404, 'Match not found.')
 		const sports = resolveSportsProviderForCountry(country.code)
-		const leagueAllowed = !sports.leagues || sports.leagues.includes(event.league)
+		const leagueAllowed = !sports.leagues || sports.leagues.some((l) => l.code === event.league)
 		if (event.provider !== sports.id || !leagueAllowed) fail(422, 'Match is not available in your country.')
 		if (!isMatchBookable(event.status as MatchStatus, event.kickoffTimeUtc, new Date())) {
 			fail(422, 'Match is no longer open for new pots.')
 		}
+		const refundAccount = await this.db.payoutAccount.findFirst({
+			where: { id: input.refundAccountId, userId, deletedAt: null, countryCode: country.code },
+			select: { id: true },
+		})
+		if (!refundAccount) fail(422, 'Choose a refund account from your saved bank accounts.')
 
 		const pot = await this.db.pot.create({
 			data: {
@@ -133,6 +165,8 @@ export class PotService {
 				provider: country.paymentProviderId,
 				prizeAmountMinorUnits: input.prizeAmountMinorUnits,
 				winnerCount: input.winnerCount,
+				refundAccountId: refundAccount.id,
+				isPrivate: input.isPrivate ?? false,
 			},
 		})
 		await this.db.potStateTransition.create({
@@ -156,7 +190,6 @@ export class PotService {
 			result = await provider.fund({
 				potId: pot.id,
 				userId,
-				email: user.email,
 				countryCode: pot.countryCode,
 				currency: pot.currency,
 				amountMinorUnits: pot.prizeAmountMinorUnits,

@@ -43,11 +43,20 @@ model PredictionEdit {
   @@index([predictionId, replacedAt])
 }
 
-// Account identity. Country is fixed at signup and drives currency, provider,
-// and eligibility rules elsewhere (see @surescore/shared country-config).
+// Account identity. Users sign up and sign in with their email address
+// (verified by an emailed code at signup); it is required by the app for every
+// new account. The column stays nullable only because accounts created during
+// phone sign-in may lack one, and tightening it would rebuild "User" on D1.
+// Phone is collected at signup but not verified, so it is not unique (a
+// unique unverified number would let anyone block its real owner).
+// Country is fixed at signup and drives currency, provider, and eligibility
+// rules elsewhere (see @surescore/shared country-config).
 model User {
   id           String   @id @default(cuid())
-  email        String   @unique
+  email        String?  @unique // lowercased; the sign-in id
+  emailVerifiedAt DateTime?
+  phone        String? // E.164, e.g. "+2348012345678"; not verified
+  phoneVerifiedAt DateTime? // set only for accounts verified by SMS during phone sign-in
   passwordHash String
   passwordSalt String
   countryCode  String
@@ -62,6 +71,7 @@ model User {
   predictions    Prediction[]
 
   @@index([countryCode])
+  @@index([phone])
 }
 
 // Where a user's winnings are paid out. Provider is derived from countryCode
@@ -166,6 +176,8 @@ model Pot {
   winnerCount           Int
   status                String   @default("Draft")
   fundingReference      String?
+  refundAccountId       String? // potter's PayoutAccount for refunds; no FK so adding it never rebuilds Pot
+  isPrivate             Boolean  @default(false) // hidden from discovery; reachable only via the share link (or by its potter/players)
   shareCode             String?  @unique // set only once funding succeeds
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
@@ -178,6 +190,7 @@ model Pot {
   @@index([potterId])
   @@index([eventId])
   @@index([status])
+  @@index([isPrivate, status])
 }
 
 // Append-only audit trail: one row per pot state transition.
@@ -229,7 +242,7 @@ model SettlementOverride {
 // One row per background job execution, for the admin job-failure view.
 model JobRun {
   id         String   @id @default(cuid())
-  job        String // fixture-prefetch | live-refresh | settlement | reconciliation
+  job        String // fixture-prefetch | match-cleanup | live-refresh | settlement | reconciliation
   kind       String // sports | payments | finance
   status     String // ok | failed
   error      String?

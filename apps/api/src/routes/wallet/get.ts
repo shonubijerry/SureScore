@@ -1,7 +1,7 @@
 import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
 import { createDbClient } from "@surescore/db";
-import { pageArgs, pageQuery, toPage } from "../../lib/pagination.js";
+import { pageArgs, pageQuery, toPage } from "../../http/pagination.js";
 import type { AppContext } from "../../types.js";
 
 const entrySchema = z.object({

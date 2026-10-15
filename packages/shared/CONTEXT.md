@@ -5,9 +5,16 @@
 - Holds country mapping, payout rules, eligibility checks, and provider metadata.
 - Keeps product rules independent from provider adapters and app-specific code.
 
+## Folder layout
+- src/config/: country-config.ts (countries, currencies, payment/sports/SMS/email provider and league mapping), banks.ts
+- src/identity/: phone.ts (E.164), email.ts, name-match.ts (payout account names), roles.ts (roles + permissions)
+- src/rules/: pure product rules, no I/O: pot-rules, scoring, settlement, eligibility, reconciliation, cache-freshness
+- src/providers/: provider contracts (interfaces only) + provider-registry.ts
+- src/index.ts: re-exports everything, grouped by folder; consumers import from "@surescore/shared" only
+
 ## Key files
-- src/country-config.ts: supported countries, currencies, payment provider mapping, sports provider mapping
-- src/eligibility.ts: policy helpers, including the first-prediction payout completion rule
+- src/config/country-config.ts: supported countries, currencies, payment provider mapping, sports provider mapping
+- src/rules/eligibility.ts: policy helpers, including the first-prediction payout completion rule
 - src/providers/payment-provider.ts: internal `PaymentProvider` interface (fund, refund, payout, retryPayout, verify)
 - src/providers/sports-provider.ts: internal `SportsProvider` interface + normalized `SportsEvent` schema
 - src/providers/provider-registry.ts: `ProviderRegistry` resolving adapters by country via country-config

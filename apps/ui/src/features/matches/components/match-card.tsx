@@ -2,13 +2,12 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { formatKickoff, hasScore, isLive, leagueName, matchStatusLabel } from '../lib/format'
-import type { Match } from '../lib/types'
+import { formatKickoff, hasScore, isLive, leagueName, matchStatusLabel } from '../../../lib/format'
+import type { Match } from '../../../lib/types'
 
-/** Score while in play or finished; "vs" before kickoff. */
+/** Score while live or at full time; "vs" otherwise (upcoming, postponed, abandoned). */
 export function MatchScore({ match, large }: { match: Match; large?: boolean }) {
-  const started = new Date(match.kickoffTimeUtc).getTime() <= Date.now() && match.status !== 'postponed'
-  const text = hasScore(match) ? `${match.homeScore} – ${match.awayScore}` : started ? '– –' : 'vs'
+  const text = hasScore(match) ? `${match.homeScore} – ${match.awayScore}` : 'vs'
   return <span className={`font-black tabular-nums ${large ? 'text-3xl' : 'text-lg'}`}>{text}</span>
 }
 

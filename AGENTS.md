@@ -98,7 +98,7 @@ e. Business logic must not directly depend on provider-specific DTOs from Paysta
 
 ## User roles and permissions
 
-a. Admin manages operational oversight, settlement exceptions, payouts, refunds, disputes, and staff accounts. Staff is a limited back-office role (read-only views plus pot notes). Permissions are defined once in `packages/shared/src/roles.ts`.
+a. Admin manages operational oversight, settlement exceptions, payouts, refunds, disputes, and staff accounts. Staff is a limited back-office role (read-only views plus pot notes). Permissions are defined once in `packages/shared/src/identity/roles.ts`.
 
 b. Potter creates and funds pots, chooses winner count, shares links, and cancels before cutoff.
 

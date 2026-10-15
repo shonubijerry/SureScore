@@ -4,8 +4,8 @@
 // per alert per hour (KV dedupe) and always logs at error level.
 
 import { createDbClient } from "@surescore/db";
-import { AdminOpsService } from "./admin-ops.js";
-import { log } from "./logger.js";
+import { AdminOpsService } from "./ops.js";
+import { log } from "../../platform/logger.js";
 
 export type AlertKind = "provider_failure" | "stale_sports_data" | "failed_payouts" | "failed_job";
 export interface Alert {

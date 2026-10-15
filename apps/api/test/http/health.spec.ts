@@ -5,15 +5,15 @@ import {
 	SELF,
 } from "cloudflare:test";
 import { describe, it, expect } from "vitest";
-import worker from "../src/index";
+import worker from "../../src/index";
 
 // For now, you'll need to do something like this to get a correctly-typed
 // `Request` to pass to `worker.fetch()`.
-const IncomingRequest = Request<unknown, IncomingRequestCfProperties>;
+const incomingRequest = (url: string) => new Request(url) as Request<unknown, IncomingRequestCfProperties>;
 
 describe("SureScore API worker", () => {
 	it("returns the monorepo health payload when the D1 binding is available", async () => {
-		const request = new IncomingRequest("http://example.com/api/health");
+		const request = incomingRequest("http://example.com/api/health");
 		// Create an empty context to pass to `worker.fetch()`.
 		const ctx = createExecutionContext();
 		const response = await worker.fetch(request, env, ctx);
@@ -30,7 +30,7 @@ describe("SureScore API worker", () => {
 	});
 
 	it("returns setup guidance when the D1 binding is missing", async () => {
-		const request = new IncomingRequest("http://example.com/api/health");
+		const request = incomingRequest("http://example.com/api/health");
 		const ctx = createExecutionContext();
 		const response = await worker.fetch(request, {} as never, ctx);
 

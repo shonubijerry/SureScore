@@ -26,6 +26,21 @@ function sessionKey(tokenHash: string): string {
   return `session:${tokenHash}`;
 }
 
+/**
+ * A user's session generation. Signing out everywhere (e.g. a password reset)
+ * bumps it, voiding every session issued under an older generation. A counter
+ * rather than a timestamp, so it never depends on clock resolution.
+ */
+const generationKey = (userId: string) => `sessions:generation:${userId}`;
+
+interface SessionRecord {
+  userId: string;
+  /** Absent on sessions created before bulk revocation existed (= generation 0). */
+  generation?: number;
+}
+
+const readGeneration = async (sessions: KVNamespace, userId: string) => Number((await sessions.get(generationKey(userId))) ?? 0);
+
 export async function createSession(
   sessions: KVNamespace,
   authSecret: string,
@@ -35,11 +50,14 @@ export async function createSession(
   const expiresAt = new Date((nowSeconds + SESSION_TTL_SECONDS) * 1000);
 
   const token = await sign(
-    { sub: userId, iat: nowSeconds, exp: nowSeconds + SESSION_TTL_SECONDS },
+    // `jti` makes every token unique: without it, two sessions for one user in
+    // the same second would be identical and share (and overwrite) one KV record.
+    { sub: userId, jti: crypto.randomUUID(), iat: nowSeconds, exp: nowSeconds + SESSION_TTL_SECONDS },
     authSecret,
   );
 
-  await sessions.put(sessionKey(await hashToken(token)), JSON.stringify({ userId }), {
+  const record: SessionRecord = { userId, generation: await readGeneration(sessions, userId) };
+  await sessions.put(sessionKey(await hashToken(token)), JSON.stringify(record), {
     expirationTtl: SESSION_TTL_SECONDS,
   });
 
@@ -62,15 +80,20 @@ export async function verifySession(
     throw new AuthError("Invalid session token payload.");
   }
 
-  const record = await sessions.get<{ userId: string }>(
-    sessionKey(await hashToken(token)),
-    "json",
-  );
-  if (!record) {
+  const [record, generation] = await Promise.all([
+    sessions.get<SessionRecord>(sessionKey(await hashToken(token)), "json"),
+    readGeneration(sessions, payload.sub),
+  ]);
+  if (!record || (record.generation ?? 0) < generation) {
     throw new AuthError("Session has been revoked or expired.");
   }
 
   return { userId: record.userId };
+}
+
+/** Signs a user out of every existing session; sessions created afterwards are valid. */
+export async function revokeAllSessions(sessions: KVNamespace, userId: string): Promise<void> {
+  await sessions.put(generationKey(userId), String((await readGeneration(sessions, userId)) + 1));
 }
 
 export async function revokeSession(sessions: KVNamespace, token: string): Promise<void> {

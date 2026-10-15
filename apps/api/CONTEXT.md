@@ -12,8 +12,19 @@
 - Resource modules live under src/routes/{resource}/
 - Each endpoint is a single-responsibility Chanfana OpenAPIRoute class
 - Shared app env contract: src/types.ts
-- Auth/session logic: src/lib/auth.ts
-- Middleware and common helpers: src/lib/middleware.ts and src/lib/openapi.ts
+
+## Folder layout (group by concern; never add a catch-all folder)
+- src/routes/{resource}/: HTTP endpoints only (one Chanfana class per file); they call modules, never Prisma-heavy logic inline
+- src/modules/{domain}/: business logic, one folder per domain
+  - auth/: session.ts (JWT + KV sessions, revocation), password.ts, signup.ts, password-reset.ts, otp/ (code.ts generation + hashing, challenge.ts limits, channels.ts email/SMS delivery)
+  - pots/: pot-service.ts (lifecycle), pot-access.ts (private pots), prediction-service.ts, settlement-service.ts
+  - payments/: ledger.ts (append-only), transfer-queue.ts (payouts/refunds), payout-recipient.ts, reconciliation-service.ts
+  - sports/: cache-repository.ts, ingestion.ts (prefetch/live refresh/freshness), cleanup.ts (old-match pruning)
+  - admin/: ops.ts, pots.ts, staff.ts, transfers.ts, alerts.ts, audit.ts
+- src/http/: request/response plumbing shared by routes: middleware.ts (auth guards), rate-limit.ts, openapi.ts, pagination.ts, views.ts (match/pot response shapes)
+- src/platform/: cross-cutting infrastructure: logger.ts, job-runs.ts, chunk.ts (D1 `in` batching), secure-data.ts (account-number encryption)
+- src/providers/{payment,sports,sms,email}/: third-party adapters only, plus registry.ts
+- test/ mirrors src: test/{admin,auth,payments,pots,sports,http,platform,providers}, test/rules + test/identity for @surescore/shared rules, test/e2e for full flows; DB-backed specs call `applyMigrations` from test/helpers/db.ts
 
 ## Route layout
 - auth/: signup, login, logout, me
@@ -30,16 +41,17 @@
 - test/providers/*.contract.ts: reusable contract assertions; adapter specs (paystack-provider.spec.ts, espn-provider.spec.ts) run their adapter through these plus provider-registry.spec.ts covers resolution/error behavior
 
 ## Sports data ingestion and cache
-- src/lib/sports-cache-repository.ts: `SportsEventCacheStore` interface (store-agnostic) + `PrismaSportsEventCacheStore` adapter over the `SportsEventCache` D1 table; cache row id is `"{provider}:{externalId}"`
-- src/lib/sports-ingestion.ts: `prefetchFixtures`/`refreshLiveScores` (pure functions over `SportsProvider` + `SportsEventCacheStore`, so they're unit-testable with fakes, no Prisma import); a failed league fetch is caught and skipped so prior cached rows for that league are left untouched (fallback behavior); `invalidateStaleEvents` recomputes and persists freshness for every row
+- src/modules/sports/cache-repository.ts: `SportsEventCacheStore` interface (store-agnostic) + `PrismaSportsEventCacheStore` adapter over the `SportsEventCache` D1 table; cache row id is `"{provider}:{externalId}"`
+- src/modules/sports/ingestion.ts: `prefetchFixtures`/`refreshLiveScores` (pure functions over `SportsProvider` + `SportsEventCacheStore`, so they're unit-testable with fakes, no Prisma import); a failed league fetch is caught and skipped so prior cached rows for that league are left untouched (fallback behavior); `invalidateStaleEvents` recomputes and persists freshness for every row
 - `@surescore/shared`'s `computeFreshness`/`CacheFreshness` marks rows "live" (recently refreshed live match), "cached" (recently refreshed fixture, or any finished/abandoned result), or "stale" (aged past the job cadence tolerance)
-- src/index.ts `scheduled()` dispatches on `controller.cron`: `"0 */4 * * *"` runs fixture prefetch, `"*/10 * * * *"` runs live score refresh + stale invalidation (crons declared in wrangler.jsonc `triggers.crons`)
+- src/index.ts `scheduled()` dispatches on `controller.cron`: `"0 */4 * * *"` runs fixture prefetch + old-match cleanup, `"*/10 * * * *"` runs live score refresh + stale invalidation (crons declared in wrangler.jsonc `triggers.crons`)
+- Stale invalidation only relabels freshness; it never deletes. src/modules/sports/cleanup.ts `pruneOldMatches` deletes matches 7+ days past kickoff unless one of their pots was paid for (successful fund ledger row or a funded pot state); unpaid pots on a removed match go with it, ledger rows are never deleted
 - League mapping comes from `@surescore/shared`'s `sportsProviderConfigs[].leagues`, never hardcoded at the call site
-- test/sports/*.spec.ts: `cache-freshness.spec.ts` covers the freshness policy, `sports-ingestion.spec.ts` covers prefetch/live-refresh/invalidate against fake provider + store (provider outage fallback, freshness marking)
+- test/rules/cache-freshness.spec.ts covers the freshness policy; test/sports/ingestion.spec.ts covers prefetch/live-refresh/invalidate against fake provider + store (provider outage fallback, freshness marking)
 
 ## Settlement, refunds and payouts (Epic 9)
 - `@surescore/shared` settlement.ts: `regulationOutcome` (settles only on an official "full time" result, so extra time/penalties never count), `splitPrizePool` (90% winner pool / 10% fee), `distributePrizes` (50/30/20; 100 for 1 winner, 60/40 for 2; fewer players than slots uses the split for the player count; ties merge slots and split equally, leftover minor units go to the earliest tied entries so payouts sum exactly to the pool)
-- src/lib/settlement-service.ts: `settleAll()` runs on the 10-minute cron after `syncStatuses` and settles pots in "Settling": ranks persisted predictions, enqueues payouts (key `payout:{potId}:{userId}`) and moves the pot to Paid. Re-runs are safe (compare-and-set transition + ledger check in the queue consumer). A pot with no predictions is cancelled and refunded; a winner without a payout account gets a failed ledger row for admin retry
+- src/modules/pots/settlement-service.ts: `settleAll()` runs on the 10-minute cron after `syncStatuses` and settles pots in "Settling": ranks persisted predictions, enqueues payouts (key `payout:{potId}:{userId}`) and moves the pot to Paid. Re-runs are safe (compare-and-set transition + ledger check in the queue consumer). A pot with no predictions is cancelled and refunded; a winner without a payout account gets a failed ledger row for admin retry
 - Refunds for postponed/abandoned matches are initiated by `PotService.cancel` (via `syncStatuses`) through the transfer queue
 - `GET /pots/:id/settlement` returns latest payout/refund status from the ledger (potter: all payouts + refund; player: own payout)
 - Signup never accepts a country: it is taken from `request.cf.country` and falls back to Nigeria (`resolveSignupCountry`)
@@ -50,9 +62,9 @@
 - Pots: `GET /pots/summary`, `/pots`, `/pots/:id`; `POST /pots/:id/{notes,dispute,dispute/resolve,settlement-override}`. Disputes use the `Disputed` pot state (only from Settling/Paid); resolving returns the pot to its origin. Override (`SettlementOverride`, one per pot, blocked after payouts) is honoured by `SettlementService.settle`.
 - Transfers: `GET /payouts`, `/refunds` (latest ledger state per action); `POST /transfers/retry`. Retry enqueues with `attemptOffset` so the new ledger `entryKey` never collides with earlier attempts. Payout retry uses the user's current payout account.
 - Ops: `GET /health` (provider health from ledger/cache + `JobRun`), `GET /ledger` (search by email, reference, key, pot, user).
-- Reconciliation: pure rules in `packages/shared/src/reconciliation.ts`, run by `ReconciliationService` daily (cron `0 2 * * *`) or on demand (`POST /reconciliation/run`). Findings are deduplicated by fingerprint and reviewed via `/reconciliation/findings/:id/resolve`.
+- Reconciliation: pure rules in `packages/shared/src/rules/reconciliation.ts`, run by `ReconciliationService` daily (cron `0 2 * * *`) or on demand (`POST /reconciliation/run`). Findings are deduplicated by fingerprint and reviewed via `/reconciliation/findings/:id/resolve`.
 - Scheduled jobs are recorded in `JobRun` via `trackJob` (14-day retention).
-- UI: `apps/ui/src/pages/admin.tsx` at `/admin` (admins only).
+- UI: `apps/ui/src/features/admin/` at `/admin` (staff and admins).
 - D1 limits bound parameters; use `inChunks` for `in` queries.
 
 ## Product rules enforced here
@@ -64,8 +76,8 @@
 ## Important files
 - src/router.ts
 - src/index.ts
-- src/lib/auth.ts
-- src/lib/middleware.ts
+- src/modules/auth/session.ts
+- src/http/middleware.ts
 - src/routes/auth/index.ts
 - src/routes/config/index.ts
 - src/routes/payout-accounts/index.ts

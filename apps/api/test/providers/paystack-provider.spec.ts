@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { PaystackProvider } from "../../src/providers/payment/paystack-provider.js";
+import { PaystackProvider, toTransferReference } from "../../src/providers/payment/paystack-provider.js";
 import { assertImplementsPaymentProviderContract, assertPaymentResultShape } from "./payment-provider.contract.js";
 
 function jsonResponse(body: unknown, ok = true, status = 200): Response {
@@ -110,4 +110,8 @@ describe("PaystackProvider", () => {
       }),
     ).rejects.toThrow("Insufficient balance");
   });
+});
+
+it("makes idempotency keys valid Paystack transfer references", () => {
+	expect(toTransferReference("payout:Pot-1:user_2")).toBe("payout-pot-1-user_2");
 });

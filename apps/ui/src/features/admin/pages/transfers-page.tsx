@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
-import { Section } from '../../components/bits'
-import { api, queryString } from '../../lib/api'
-import { formatMoney } from '../../lib/format'
-import type { TransferRow } from '../../lib/types'
-import { Can, DataTable, ReasonForm, inputClass, toneFor, usePaged, when } from './kit'
+import { Section } from '../../../components/bits'
+import { api, queryString } from '../../../lib/api'
+import { formatMoney } from '../../../lib/format'
+import type { TransferRow } from '../../../lib/types'
+import { Can, DataTable, ReasonForm, inputClass, toneFor, usePaged, when } from '../components/kit'
 
 export default function Transfers({ type }: { type: 'payouts' | 'refunds' }) {
   const [status, setStatus] = useState(type === 'payouts' ? 'failed' : 'pending')
@@ -29,7 +29,7 @@ export default function Transfers({ type }: { type: 'payouts' | 'refunds' }) {
         columns={[
           { header: 'Status', cell: (t) => <Badge variant={toneFor(t.status)}>{t.status}</Badge> },
           { header: 'Amount', cell: (t) => formatMoney(t.amountMinorUnits, t.currency) },
-          { header: 'User', cell: (t) => t.email ?? '—' },
+          { header: 'User', cell: (t) => t.email ?? t.phone ?? '—' },
           {
             header: 'Pot',
             cell: (t) => (

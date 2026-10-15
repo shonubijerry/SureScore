@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { FinalResult, FixturesQuery, MatchStatus, SportsEvent, SportsProvider } from "@surescore/shared";
-import { invalidateStaleEvents, prefetchFixtures, refreshLiveScores } from "../../src/lib/sports-ingestion.js";
-import type { SportsEventCacheRecord, SportsEventCacheStore } from "../../src/lib/sports-cache-repository.js";
+import { invalidateStaleEvents, prefetchFixtures, refreshLiveScores } from "../../src/modules/sports/ingestion.js";
+import type { SportsEventCacheRecord, SportsEventCacheStore } from "../../src/modules/sports/cache-repository.js";
 
 class FakeSportsEventCacheStore implements SportsEventCacheStore {
 	rows = new Map<string, SportsEventCacheRecord>();

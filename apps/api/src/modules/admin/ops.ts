@@ -3,7 +3,7 @@
 
 import { createDbClient } from "@surescore/db";
 import { paymentProviderConfigs, sportsProviderConfigs } from "@surescore/shared";
-import { pageArgs, toPage } from "./pagination.js";
+import { pageArgs, toPage } from "../../http/pagination.js";
 
 const DAY_MS = 86_400_000;
 
@@ -109,13 +109,15 @@ export class AdminOpsService {
 				? {
 						OR: term.includes("@")
 							? [{ user: { email: { contains: term.toLowerCase() } } }]
-							: [{ reference: term }, { idempotencyKey: term }, { potId: term }, { userId: term }],
+							: term.startsWith("+")
+								? [{ user: { phone: { contains: term } } }]
+								: [{ reference: term }, { idempotencyKey: term }, { potId: term }, { userId: term }],
 					}
 				: {}),
 		};
 		const rows = await this.db.ledgerEntry.findMany({
 			where,
-			include: { user: { select: { email: true, displayName: true } } },
+			include: { user: { select: { email: true, phone: true, displayName: true } } },
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 			...pageArgs({ limit, cursor }),
 		});

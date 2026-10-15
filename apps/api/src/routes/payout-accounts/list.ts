@@ -1,7 +1,7 @@
 import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
 import { createDbClient } from "@surescore/db";
-import { toPublicAccount } from "../../lib/secure-data.js";
+import { toPublicAccount } from "../../platform/secure-data.js";
 import type { AppContext } from "../../types.js";
 import { payoutAccountSchema } from "./schema.js";
 

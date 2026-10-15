@@ -1,7 +1,7 @@
 import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
 import { MAX_FIRST_GOAL_MINUTE, MAX_PREDICTED_GOALS } from "@surescore/shared";
-import { PredictionService } from "../../lib/prediction-service.js";
+import { PredictionService } from "../../modules/pots/prediction-service.js";
 import type { AppContext } from "../../types.js";
 import { potIdParams } from "./schema.js";
 
@@ -9,6 +9,10 @@ const predictionBody = z.object({
 	homeGoals: z.number().int().min(0).max(MAX_PREDICTED_GOALS),
 	awayGoals: z.number().int().min(0).max(MAX_PREDICTED_GOALS),
 	firstGoalMinute: z.number().int().min(1).max(MAX_FIRST_GOAL_MINUTE).nullish(),
+});
+
+const submitBody = predictionBody.extend({
+	shareCode: z.string().optional().describe("Share code from the link; required to join a private pot"),
 });
 
 const breakdownSchema = z.object({
@@ -37,13 +41,14 @@ export class SubmitPredictionEndpoint extends OpenAPIRoute {
 	schema = {
 		tags: ["Predictions"],
 		summary: "Submit your one prediction for a pot (until 15 minutes before kickoff)",
-		request: { params: potIdParams, body: contentJson(predictionBody) },
+		request: { params: potIdParams, body: contentJson(submitBody) },
 		responses: viewResponse("Prediction created", "201"),
 	};
 
 	async handle(c: AppContext) {
 		const { params, body } = await this.getValidatedData<typeof this.schema>();
-		return c.json(await service(c).submit(c.get("userId"), params.id, body), 201);
+		const { shareCode, ...pick } = body;
+		return c.json(await service(c).submit(c.get("userId"), params.id, pick, new Date(), shareCode), 201);
 	}
 }
 
@@ -79,7 +84,7 @@ export class GetLeaderboardEndpoint extends OpenAPIRoute {
 	schema = {
 		tags: ["Predictions"],
 		summary: "Ranked leaderboard with per-prediction score breakdown (available after lock)",
-		request: { params: potIdParams },
+		request: { params: potIdParams, query: z.object({ code: z.string().optional().describe("Share code, for private pots") }) },
 		responses: {
 			"200": {
 				description: "Leaderboard; tied entries share a rank",
@@ -105,7 +110,7 @@ export class GetLeaderboardEndpoint extends OpenAPIRoute {
 	};
 
 	async handle(c: AppContext) {
-		const { params } = await this.getValidatedData<typeof this.schema>();
-		return c.json(await service(c).leaderboard(params.id));
+		const { params, query } = await this.getValidatedData<typeof this.schema>();
+		return c.json(await service(c).leaderboard(params.id, { userId: c.get("userId"), shareCode: query.code }));
 	}
 }

@@ -1,6 +1,6 @@
 import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
-import { revokeSession } from "../../lib/auth.js";
+import { revokeSession } from "../../modules/auth/session.js";
 import type { AppContext } from "../../types.js";
 
 export class LogoutEndpoint extends OpenAPIRoute {

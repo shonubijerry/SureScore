@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Section } from '../../components/bits'
-import { queryString } from '../../lib/api'
-import type { AuditEntry } from '../../lib/types'
-import { DataTable, inputClass, usePaged, when } from './kit'
+import { Section } from '../../../components/bits'
+import { queryString } from '../../../lib/api'
+import type { AuditEntry } from '../../../lib/types'
+import { DataTable, inputClass, usePaged, when } from '../components/kit'
 
 const ACTIONS = [
   'note', 'dispute.open', 'dispute.resolve', 'settlement.override', 'transfer.retry', 'reconciliation.run',

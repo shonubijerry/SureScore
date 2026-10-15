@@ -1,9 +1,9 @@
 import { Badge } from '@/components/ui/badge'
-import { Empty, Section } from '../../components/bits'
-import { formatMoney } from '../../lib/format'
-import type { ProviderHealth } from '../../lib/types'
-import { useApi } from '../../lib/use-api'
-import { Query, Row, toneFor, when } from './kit'
+import { Empty, Section } from '../../../components/bits'
+import { formatMoney } from '../../../lib/format'
+import type { ProviderHealth } from '../../../lib/types'
+import { useApi } from '../../../lib/use-api'
+import { Query, Row, toneFor, when } from '../components/kit'
 
 interface Alert {
   kind: string

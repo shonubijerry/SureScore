@@ -1,8 +1,8 @@
 import { NavLink, Navigate, Outlet } from 'react-router-dom'
 import { Activity, ArrowLeft, BookOpen, ClipboardList, Landmark, RotateCcw, Scale, ScrollText, Send, Users } from 'lucide-react'
 import { isStaffRole, type Permission } from '@surescore/shared'
-import { Loading } from '../../components/bits'
-import { useAuth } from '../../lib/auth'
+import { Loading } from '../../../components/bits'
+import { useAuth } from '../../auth/auth-context'
 import { useCan } from './kit'
 
 const NAV: { to: string; label: string; icon: typeof Activity; permission: Permission; end?: boolean }[] = [
@@ -37,7 +37,7 @@ export function AdminLayout() {
               <ClipboardList aria-hidden className="size-5" /> SureScore Admin
             </p>
             <p className="text-xs capitalize text-muted-foreground">
-              {user?.email} · {user?.role}
+              {user?.email ?? user?.phone} · {user?.role}
             </p>
           </div>
         </div>

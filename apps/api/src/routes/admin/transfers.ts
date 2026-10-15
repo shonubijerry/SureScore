@@ -1,8 +1,8 @@
 import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
-import { AdminPotService } from "../../lib/admin-pots.js";
-import { AdminTransferService } from "../../lib/admin-transfers.js";
-import { pageQuery } from "../../lib/pagination.js";
+import { AdminPotService } from "../../modules/admin/pots.js";
+import { AdminTransferService } from "../../modules/admin/transfers.js";
+import { pageQuery } from "../../http/pagination.js";
 import type { AppContext } from "../../types.js";
 import { okResponse, reasonSchema } from "./schema.js";
 

@@ -4,6 +4,7 @@
 
 import { HTTPException } from "hono/http-exception";
 import { createDbClient, type Pot, type Prediction, type SportsEventCache } from "@surescore/db";
+import { assertPotAccess } from "./pot-access.js";
 import {
 	assertHasCompletedPayoutDetails,
 	DEFAULT_TIE_BREAKS,
@@ -59,8 +60,10 @@ export class PredictionService {
 		this.db = createDbClient(env.DB);
 	}
 
-	async submit(userId: string, potId: string, input: PredictionInput, now = new Date()) {
+	/** `shareCode` is required for a private pot the user can't otherwise reach. */
+	async submit(userId: string, potId: string, input: PredictionInput, now = new Date(), shareCode?: string) {
 		const pot = await this.getOpenPot(potId, now);
+		await assertPotAccess(this.db, pot, { userId, shareCode });
 		await this.assertEligible(userId, pot);
 
 		try {
@@ -122,9 +125,10 @@ export class PredictionService {
 	}
 
 	/** Ranked leaderboard; hidden until the prediction lock so picks cannot be copied. */
-	async leaderboard(potId: string, now = new Date()) {
+	async leaderboard(potId: string, viewer: { userId?: string; shareCode?: string } = {}, now = new Date()) {
 		const pot = await this.db.pot.findUnique({ where: { id: potId }, include: { event: true } });
 		if (!pot) return fail(404, "Pot not found.");
+		await assertPotAccess(this.db, pot, viewer);
 		if (!isPredictionLocked(pot.event.kickoffTimeUtc, now)) {
 			fail(403, "The leaderboard is hidden until predictions lock.");
 		}

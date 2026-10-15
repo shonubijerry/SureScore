@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { handleTransferBatch, retryDelaySeconds, type TransferJob } from "../src/lib/transfer-queue";
+import { handleTransferBatch, retryDelaySeconds, type TransferJob } from "../../src/modules/payments/transfer-queue";
 
 const payoutJob: TransferJob = {
 	type: "payout",
@@ -25,17 +25,33 @@ describe("transfer queue consumer", () => {
 		expect(m.retry).not.toHaveBeenCalled();
 	});
 
-	it("routes refunds to provider.refund", async () => {
+	const { payoutAccountId: _, ...transfer } = payoutJob.request;
+	const legacyRefund = { ...transfer, reason: "cancelled", originalReference: "fund-ref", idempotencyKey: "refund:p1" };
+
+	it("reverses the funding payment for refunds without a refund account", async () => {
 		const refund = vi.fn().mockResolvedValue({ status: "successful" });
-		const m = makeMessage({ type: "refund", request: { ...payoutJob.request, reason: "postponed" } as never });
+		const m = makeMessage({ type: "refund", request: { ...legacyRefund, reason: "postponed" } } as never);
 		await run([m], { refund });
 		expect(refund).toHaveBeenCalledOnce();
 		expect(m.ack).toHaveBeenCalled();
 	});
 
+	it("transfers refunds to the potter's refund account", async () => {
+		const refund = vi.fn();
+		const payout = vi.fn().mockResolvedValue({ status: "successful", provider: "paystack", reference: "r" });
+		const onRefunded = vi.fn().mockResolvedValue(true);
+		const request = { ...legacyRefund, reason: "no-winner", amountMinorUnits: 9_000, payoutAccountId: "acct-potter" };
+		await run([makeMessage({ type: "refund", request } as never)], { refund, payout }, makeLedger(), onRefunded);
+		expect(refund).not.toHaveBeenCalled();
+		expect(payout).toHaveBeenCalledWith(
+			expect.objectContaining({ payoutAccountId: "acct-potter", recipientCode: "RCP_1", amountMinorUnits: 9_000, idempotencyKey: "refund:p1" }),
+		);
+		expect(onRefunded).toHaveBeenCalledWith("p1");
+	});
+
 	it("marks the pot refunded only after a successful refund", async () => {
 		const onRefunded = vi.fn().mockResolvedValue(true);
-		const body = { type: "refund", request: { ...payoutJob.request, reason: "cancelled" } } as never;
+		const body = { type: "refund", request: legacyRefund } as never;
 		await run([makeMessage(body)], { refund: vi.fn().mockResolvedValue({ status: "pending" }) }, makeLedger(), onRefunded);
 		expect(onRefunded).not.toHaveBeenCalled();
 		await run([makeMessage(body)], { refund: vi.fn().mockResolvedValue({ status: "successful" }) }, makeLedger(), onRefunded);

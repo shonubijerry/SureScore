@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { Permission } from "@surescore/shared";
 import { fromHono, type OpenAPIRoute } from "chanfana";
-import { requirePermission, requireAuth, requireStaff } from "../../lib/middleware.js";
+import { requirePermission, requireAuth, requireStaff } from "../../http/middleware.js";
 import { AlertsEndpoint, AuditLogEndpoint, ChangeRoleEndpoint, CreateStaffEndpoint, ListStaffEndpoint } from "./staff.js";
 import type { AppEnv } from "../../types.js";
 import {
