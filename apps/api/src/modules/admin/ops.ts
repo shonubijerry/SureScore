@@ -3,11 +3,11 @@
 
 import { createDbClient } from "@surescore/db";
 import { paymentProviderConfigs, sportsProviderConfigs } from "@surescore/shared";
-import { pageArgs, toPage } from "../../http/pagination.js";
+import { newestFirst, paginate, type PageParams } from "../../http/pagination.js";
 
 const DAY_MS = 86_400_000;
 
-export interface LedgerSearch {
+export interface LedgerSearch extends PageParams {
 	q?: string;
 	type?: string;
 	status?: string;
@@ -17,8 +17,6 @@ export interface LedgerSearch {
 	userId?: string;
 	from?: Date;
 	to?: Date;
-	limit?: number;
-	cursor?: string;
 }
 
 export class AdminOpsService {
@@ -115,12 +113,8 @@ export class AdminOpsService {
 					}
 				: {}),
 		};
-		const rows = await this.db.ledgerEntry.findMany({
-			where,
-			include: { user: { select: { email: true, phone: true, displayName: true } } },
-			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-			...pageArgs({ limit, cursor }),
-		});
-		return toPage(rows, limit);
+		return paginate(newestFirst, { limit, cursor }, where, (args) =>
+			this.db.ledgerEntry.findMany({ ...args, include: { user: { select: { email: true, phone: true, displayName: true } } } }),
+		);
 	}
 }

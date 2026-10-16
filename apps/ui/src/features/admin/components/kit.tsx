@@ -1,17 +1,18 @@
-// Shared building blocks for the admin console: formatting, permission gate,
-// cursor-paged data hook and a paginated table. Every list is fetched through
-// `usePaged` (server default 1000 rows per request, "Load more" via cursor)
-// and shown through `DataTable` (client pages of 25).
+// Shared building blocks for the admin console: formatting, permission gate
+// and a paginated table. Every list is fetched through the app-wide `usePaged`
+// (1000 rows per request, "Load more" by keyset cursor) and shown through
+// `DataTable` (50 rows per page).
 
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { hasPermission, type Permission } from '@surescore/shared'
 import { Button } from '@/components/ui/button'
 import { Empty, ErrorNote, Loading } from '../../../components/bits'
-import { api } from '../../../lib/api'
+import { Pager } from '../../../components/pager'
 import { useAuth } from '../../auth/auth-context'
 import { formatKickoff } from '../../../lib/format'
-import type { Page } from '../../../lib/types'
-import { useApi } from '../../../lib/use-api'
+import type { Paged } from '../../../lib/use-paged'
+
+export { usePaged } from '../../../lib/use-paged'
 
 export const inputClass = 'w-full rounded-xl border border-border bg-background px-3 py-2 text-sm'
 export const when = (iso: string | null) => (iso ? formatKickoff(iso) : '—')
@@ -90,34 +91,11 @@ export function ReasonForm({
   )
 }
 
-/** Cursor-paged list that accumulates server pages behind a "Load more" button. */
-export function usePaged<T>(path: string) {
-  const first = useApi<Page<T>>(path)
-  const [extra, setExtra] = useState<{ items: T[]; next: string | null } | null>(null)
-  const [busy, setBusy] = useState(false)
-  const next = extra ? extra.next : (first.data?.nextCursor ?? null)
-  const items = [...(first.data?.items ?? []), ...(extra?.items ?? [])]
-
-  async function more() {
-    if (!next) return
-    setBusy(true)
-    try {
-      const page = await api<Page<T>>(`${path}${path.includes('?') ? '&' : '?'}cursor=${encodeURIComponent(next)}`)
-      setExtra({ items: [...(extra?.items ?? []), ...page.items], next: page.nextCursor })
-    } finally {
-      setBusy(false)
-    }
-  }
-  return { ...first, items, hasMore: !!next, more, busy }
-}
-
 export interface Column<T> {
   header: string
   cell: (row: T) => ReactNode
   className?: string
 }
-
-const PAGE_SIZE = 25
 
 export function DataTable<T>({
   query,
@@ -125,19 +103,13 @@ export function DataTable<T>({
   rowKey,
   empty,
 }: {
-  query: ReturnType<typeof usePaged<T>>
+  query: Paged<T>
   columns: Column<T>[]
   rowKey: (row: T) => string
   empty: string
 }) {
-  const [page, setPage] = useState(0)
   if (query.loading) return <Loading />
-  if (query.error) return <ErrorNote error={query.error} onRetry={query.reload} />
-  if (!query.items.length) return <Empty>{empty}</Empty>
-
-  const pages = Math.ceil(query.items.length / PAGE_SIZE)
-  const current = Math.min(page, pages - 1)
-  const rows = query.items.slice(current * PAGE_SIZE, (current + 1) * PAGE_SIZE)
+  if (!query.items.length) return query.error ? <ErrorNote error={query.error} onRetry={query.reload} /> : <Empty>{empty}</Empty>
 
   return (
     <div className="space-y-3">
@@ -153,7 +125,7 @@ export function DataTable<T>({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {query.pageItems.map((row) => (
               <tr key={rowKey(row)} className="border-t border-border align-top">
                 {columns.map((c) => (
                   <td key={c.header} className={`px-3 py-2 ${c.className ?? ''}`}>
@@ -165,24 +137,8 @@ export function DataTable<T>({
           </tbody>
         </table>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-        <span>
-          {query.items.length} loaded{query.hasMore ? '+' : ''} · page {current + 1} of {pages}
-        </span>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled={current === 0} onClick={() => setPage(current - 1)}>
-            Previous
-          </Button>
-          <Button variant="outline" size="sm" disabled={current >= pages - 1} onClick={() => setPage(current + 1)}>
-            Next
-          </Button>
-          {query.hasMore && (
-            <Button variant="outline" size="sm" onClick={query.more} disabled={query.busy}>
-              {query.busy ? 'Loading…' : 'Load more'}
-            </Button>
-          )}
-        </div>
-      </div>
+      {query.error && <ErrorNote error={query.error} />}
+      <Pager list={query} />
     </div>
   )
 }

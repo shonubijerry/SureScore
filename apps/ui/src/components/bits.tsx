@@ -35,22 +35,6 @@ export function Section({ title, action, children }: { title: string; action?: R
   )
 }
 
-/** Renders a list's loading / error / empty states, then the items. */
-export function ListState<T>({
-  query,
-  empty,
-  children,
-}: {
-  query: { data: T[] | null; error: Error | null; loading: boolean; reload: () => void }
-  empty: ReactNode
-  children: (items: T[]) => ReactNode
-}) {
-  if (query.loading) return <Loading />
-  if (query.error) return <ErrorNote error={query.error} onRetry={query.reload} />
-  if (!query.data?.length) return <Empty>{empty}</Empty>
-  return <div className="grid gap-3 md:grid-cols-2">{children(query.data)}</div>
-}
-
 export function SignInPrompt({ children }: { children: ReactNode }) {
   return (
     <Empty>

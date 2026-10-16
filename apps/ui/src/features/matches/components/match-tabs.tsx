@@ -1,11 +1,9 @@
 import { useSearchParams } from 'react-router-dom'
-import { Button } from '@/components/ui/button'
 import type { Match } from '../../../lib/types'
-import { usePagedMatches } from '../../../lib/use-paged'
+import { usePaged } from '../../../lib/use-paged'
 import { Empty, ErrorNote, Loading } from '../../../components/bits'
+import { Pager } from '../../../components/pager'
 import { MatchCard } from './match-card'
-
-const PAGE_SIZE = 4
 
 export interface MatchTab {
   key: string
@@ -18,7 +16,7 @@ export interface MatchTab {
 type ListedMatch = Match & { potCount?: number }
 
 function TabList({ tab }: { tab: MatchTab }) {
-  const list = usePagedMatches<ListedMatch>(tab.path, PAGE_SIZE)
+  const list = usePaged<ListedMatch, 'matches'>(tab.path, 'matches')
 
   if (list.loading) return <Loading />
   if (!list.items.length) return list.error ? <ErrorNote error={list.error} onRetry={list.reload} /> : <Empty>{tab.empty}</Empty>
@@ -26,7 +24,7 @@ function TabList({ tab }: { tab: MatchTab }) {
   return (
     <div className="space-y-3">
       <div className="grid gap-3 md:grid-cols-2">
-        {list.items.map((match) => (
+        {list.pageItems.map((match) => (
           <MatchCard
             key={match.cacheId}
             match={match}
@@ -41,16 +39,12 @@ function TabList({ tab }: { tab: MatchTab }) {
         ))}
       </div>
       {list.error && <ErrorNote error={list.error} />}
-      {list.hasMore && (
-        <Button variant="outline" size="lg" className="h-11 w-full" onClick={list.loadMore} disabled={list.loadingMore}>
-          {list.loadingMore ? 'Loading…' : 'Load more'}
-        </Button>
-      )}
+      <Pager list={list} />
     </div>
   )
 }
 
-/** Tabbed match lists, 4 at a time with "Load more". The open tab is kept in the URL (`?tab=`). */
+/** Tabbed, paged match lists. The open tab is kept in the URL (`?tab=`). */
 export function MatchTabs({ tabs, label }: { tabs: MatchTab[]; label: string }) {
   const [params, setParams] = useSearchParams()
   const active = tabs.find((t) => t.key === params.get('tab')) ?? tabs[0]

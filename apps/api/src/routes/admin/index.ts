@@ -14,6 +14,7 @@ import {
 	SettlementOverrideEndpoint,
 } from "./pots.js";
 import { PayoutQueueEndpoint, RefundQueueEndpoint, RetryTransferEndpoint } from "./transfers.js";
+import { ListUsersEndpoint, UserDetailEndpoint } from "./users.js";
 import { ProviderHealthEndpoint, SearchLedgerEndpoint, SyncScoreboardEndpoint } from "./operations.js";
 import {
 	ReconciliationFindingsEndpoint,
@@ -48,6 +49,8 @@ route("get", "/refunds", "transfers.view", RefundQueueEndpoint);
 route("post", "/transfers/retry", "transfers.retry", RetryTransferEndpoint);
 route("get", "/health", "dashboard.view", ProviderHealthEndpoint);
 route("get", "/ledger", "ledger.view", SearchLedgerEndpoint);
+route("get", "/users", "users.view", ListUsersEndpoint);
+route("get", "/users/:id", "users.view", UserDetailEndpoint);
 route("get", "/reconciliation", "reconciliation.view", ReconciliationStatusEndpoint);
 route("get", "/reconciliation/findings", "reconciliation.view", ReconciliationFindingsEndpoint);
 route("post", "/reconciliation/run", "reconciliation.manage", RunReconciliationEndpoint);

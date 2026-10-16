@@ -14,7 +14,7 @@ import { useAuth } from '../../auth/auth-context'
 import { formatKickoff, formatMoney, isLocked } from '../../../lib/format'
 import type { Leaderboard, PotCard, PotEntrant, PotSettlement, PredictionView } from '../../../lib/types'
 import { useApi } from '../../../lib/use-api'
-import { usePaged } from '../../../lib/use-paged'
+import { usePaged, usePages } from '../../../lib/use-paged'
 
 const LIVE_REFRESH_MS = 120_000
 const CLOSED_STATUSES = ['Cancelled', 'Refunded']
@@ -141,34 +141,26 @@ function Settlement({ pot }: { pot: PotCard }) {
   )
 }
 
-/** Rows fetched per request before lock (the API maximum), so a big pot costs one lookup per 1000 players. */
-const ENTRANT_FETCH_SIZE = 1000
-
 /** Before lock: everyone who has entered, keyset-paged, with picks hidden and 0 pts each. */
 function EntrantsBoard({ pot, shareCode, myUserId }: { pot: PotCard; shareCode?: string; myUserId: string }) {
-  const list = usePaged<PotEntrant, 'predictions'>(
-    `/api/pots/${pot.id}/predictions${queryString({ code: shareCode })}`,
-    ENTRANT_FETCH_SIZE,
-    'predictions',
-  )
+  const list = usePaged<PotEntrant, 'predictions'>(`/api/pots/${pot.id}/predictions${queryString({ code: shareCode })}`, 'predictions')
   if (list.loading) return <Loading />
   if (!list.items.length) return list.error ? <ErrorNote error={list.error} onRetry={list.reload} /> : <Empty>No predictions yet.</Empty>
 
-  const entries = list.items.map((entry) => ({ ...entry, rank: 0, breakdown: null }))
+  const pageItems = list.pageItems.map((entry) => ({ ...entry, rank: 0, breakdown: null }))
   return (
     <>
       <p className="text-xs text-muted-foreground">Picks and points show from {formatKickoff(pot.predictionLocksAt)}, when the pot locks.</p>
-      <LeaderboardList
-        entries={entries}
-        winnerCount={pot.winnerCount}
-        myUserId={myUserId}
-        hasMore={list.hasMore}
-        loadingMore={list.loadingMore}
-        loadMore={list.loadMore}
-      />
+      <LeaderboardList list={{ ...list, pageItems }} winnerCount={pot.winnerCount} myUserId={myUserId} />
       {list.error && <ErrorNote error={list.error} />}
     </>
   )
+}
+
+/** The full ranking comes in one response (it must all be scored to rank); it is shown a page at a time. */
+function RankedList({ board, winnerCount, myUserId }: { board: Leaderboard; winnerCount: number; myUserId: string }) {
+  const pages = usePages(board.entries)
+  return <LeaderboardList list={pages} winnerCount={winnerCount} myUserId={myUserId} />
 }
 
 /** From lock: the ranked leaderboard with picks and breakdowns, refreshed for live scores. */
@@ -180,7 +172,7 @@ function RankedBoard({ pot, shareCode, myUserId }: { pot: PotCard; shareCode?: s
   return (
     <>
       {!board.data.final && <p className="text-xs text-muted-foreground">Provisional ranking until the result is official.</p>}
-      <LeaderboardList entries={board.data.entries} winnerCount={pot.winnerCount} myUserId={myUserId} />
+      <RankedList board={board.data} winnerCount={pot.winnerCount} myUserId={myUserId} />
     </>
   )
 }

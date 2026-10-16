@@ -16,6 +16,7 @@ export const permissions = [
   "transfers.view",
   "transfers.retry",
   "ledger.view",
+  "users.view",
   "reconciliation.view",
   "reconciliation.manage",
   "staff.view",
@@ -33,6 +34,7 @@ const STAFF_PERMISSIONS: readonly Permission[] = [
   "pots.annotate",
   "transfers.view",
   "ledger.view",
+  "users.view",
   "reconciliation.view",
 ];
 

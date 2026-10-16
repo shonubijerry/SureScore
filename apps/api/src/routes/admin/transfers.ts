@@ -10,6 +10,7 @@ const service = (c: AppContext) => new AdminTransferService(c.env, new AdminPotS
 
 const queueQuery = z.object({
 	status: z.enum(["failed", "pending", "successful"]).optional().describe("Current state to filter by; omit for every payout/refund"),
+	userId: z.string().optional().describe("Only this user's transfers"),
 	...pageQuery,
 });
 

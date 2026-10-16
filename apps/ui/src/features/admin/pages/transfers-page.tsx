@@ -7,9 +7,10 @@ import { formatMoney } from '../../../lib/format'
 import type { TransferRow } from '../../../lib/types'
 import { Can, DataTable, ReasonForm, inputClass, toneFor, usePaged, when } from '../components/kit'
 
-export default function Transfers({ type }: { type: 'payouts' | 'refunds' }) {
+/** Payout or refund queue; with `userId` (the user page), only that user's transfers. */
+export default function Transfers({ type, userId }: { type: 'payouts' | 'refunds'; userId?: string }) {
   const [status, setStatus] = useState('all')
-  const query = usePaged<TransferRow>(`/api/admin/${type}${queryString({ status: status === 'all' ? undefined : status })}`)
+  const query = usePaged<TransferRow>(`/api/admin/${type}${queryString({ status: status === 'all' ? undefined : status, userId })}`)
 
   return (
     <Section
@@ -29,7 +30,14 @@ export default function Transfers({ type }: { type: 'payouts' | 'refunds' }) {
         columns={[
           { header: 'Status', cell: (t) => <Badge variant={toneFor(t.status)}>{t.status}</Badge> },
           { header: 'Amount', cell: (t) => formatMoney(t.amountMinorUnits, t.currency) },
-          { header: 'User', cell: (t) => t.email ?? t.phone ?? '—' },
+          {
+            header: 'User',
+            cell: (t) => (
+              <Link className="underline" to={`/admin/users/${t.userId}`}>
+                {t.displayName ?? t.email ?? t.phone ?? t.userId}
+              </Link>
+            ),
+          },
           {
             header: 'Pot',
             cell: (t) => (

@@ -7,6 +7,7 @@ import { createDbClient } from "@surescore/db";
 import { AdminPotService } from "../../src/modules/admin/pots";
 import { AdminTransferService } from "../../src/modules/admin/transfers";
 import { AdminOpsService } from "../../src/modules/admin/ops";
+import { AdminUserService } from "../../src/modules/admin/users";
 import { ReconciliationService } from "../../src/modules/payments/reconciliation-service";
 import { trackJob } from "../../src/platform/job-runs";
 import { PotService } from "../../src/modules/pots/pot-service";
@@ -99,6 +100,32 @@ describe("admin pots", () => {
 		expect((await db.adminAuditLog.findMany({ where: { action: "settlement.override" } }))[0].reason).toBe("provider stuck at 1-1");
 	});
 
+	it("shows the result, prize split and winners with their picks, points breakdown and payout state", async () => {
+		await db.sportsEventCache.update({ where: { id: "espn:1" }, data: { homeScore: 1, awayScore: 1 } });
+		// Live score: a provisional ranking (u2's 0-0 beats u1's 2-1 on a 1-1).
+		let detail = await adminPots.detail("p1");
+		expect(detail.result).toEqual({ homeGoals: 1, awayGoals: 1, firstGoalMinute: null, final: false, source: "provider" });
+		expect(detail.winners.map((w) => w.userId)).toEqual(["u2"]);
+
+		await adminPots.overrideSettlement("admin", "p1", { homeGoals: 2, awayGoals: 1, reason: "provider stuck at 1-1" });
+		detail = await adminPots.detail("p1");
+		expect(detail.result).toMatchObject({ homeGoals: 2, awayGoals: 1, final: true, source: "override" });
+		expect(detail.prize).toEqual({ winnerPool: 9_000, platformFee: 1_000, winnerCount: 1 });
+		expect(detail.winners).toHaveLength(1);
+		const [winner] = detail.winners;
+		expect(winner).toMatchObject({
+			rank: 1,
+			userId: "u1",
+			email: "u1@x.com",
+			prediction: { homeGoals: 2, awayGoals: 1 },
+			prizeMinorUnits: 9_000,
+			// The settled payout is the same amount the detail computes.
+			payout: { status: "failed", amountMinorUnits: 9_000, detail: "No payout account on file" },
+		});
+		expect(winner.breakdown.total).toBeGreaterThan(0);
+		expect(winner.breakdown.exactScoreline).toBeGreaterThan(0);
+	});
+
 	it("refuses overrides for pots whose payouts already went out", async () => {
 		await db.pot.update({ where: { id: "p1" }, data: { status: "Paid" } });
 		await adminPots.openDispute("admin", "p1", "paid but contested");
@@ -155,6 +182,17 @@ describe("admin transfers", () => {
 		expect(first.items).toHaveLength(1);
 		const second = await transfers.queue({ type: "payout", limit: 1, cursor: first.nextCursor! });
 		expect(second.items).toEqual([]);
+	});
+
+	it("filters payouts to one user", async () => {
+		await db.ledgerEntry.createMany({
+			data: [
+				entry({ entryKey: "payout:p1:u1:0", idempotencyKey: "payout:p1:u1" }),
+				entry({ entryKey: "payout:p1:u2:0", idempotencyKey: "payout:p1:u2", userId: "u2" }),
+			],
+		});
+		expect((await transfers.queue({ type: "payout" })).items).toHaveLength(2);
+		expect((await transfers.queue({ type: "payout", userId: "u2" })).items.map((t) => t.userId)).toEqual(["u2"]);
 	});
 
 	it("retries a failed refund only for a cancelled pot", async () => {
@@ -217,6 +255,36 @@ describe("ops views and reconciliation", () => {
 		await recon.resolve("admin", items[0].id, "investigated with finance");
 		expect((await recon.latest()).open).not.toEqual({});
 		await expect(recon.resolve("admin", items[0].id, "twice twice")).rejects.toThrow();
+	});
+});
+
+describe("admin users", () => {
+	beforeEach(() => seed("Paid", { account: true }));
+	const users = new AdminUserService(env.DB);
+
+	it("lists every account newest first, searchable, one keyset page at a time", async () => {
+		const all = await users.list({});
+		expect(all.items.map((u) => u.id).sort()).toEqual(["potter", "u1", "u2"]);
+		expect(all.items[0]).not.toHaveProperty("passwordHash");
+		expect((await users.list({ q: "U2@x" })).items.map((u) => u.id)).toEqual(["u2"]);
+		expect((await users.list({ q: "u1" })).items.map((u) => u.id)).toEqual(["u1"]);
+		expect((await users.list({ roles: ["admin"] })).items).toEqual([]);
+
+		const first = await users.list({ limit: 2 });
+		const second = await users.list({ limit: 2, cursor: first.nextCursor! });
+		expect([...first.items, ...second.items].map((u) => u.id).sort()).toEqual(["potter", "u1", "u2"]);
+		expect(second.nextCursor).toBeNull();
+	});
+
+	it("shows a user's masked payout accounts, activity and settled totals", async () => {
+		await db.ledgerEntry.create({ data: entry({ entryKey: "payout:p1:u1:1", idempotencyKey: "payout:p1:u1", status: "successful" }) });
+		const detail = await users.detail("u1");
+		expect(detail.user).toMatchObject({ id: "u1", email: "u1@x.com" });
+		expect(detail.payoutAccounts).toHaveLength(1);
+		expect(detail.payoutAccounts[0].accountNumber).toMatch(/^••••/);
+		expect(detail.stats).toEqual({ potsCreated: 0, predictions: 1 });
+		expect(detail.totals).toEqual([{ type: "payout", currency: "NGN", amountMinorUnits: 9_000 }]);
+		await expect(users.detail("nobody")).rejects.toThrow(/not found/i);
 	});
 });
 

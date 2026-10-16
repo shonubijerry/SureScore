@@ -1,5 +1,5 @@
 import { NavLink, Navigate, Outlet } from 'react-router-dom'
-import { Activity, ArrowLeft, BookOpen, ClipboardList, Landmark, RotateCcw, Scale, ScrollText, Send, Users } from 'lucide-react'
+import { Activity, ArrowLeft, BookOpen, ClipboardList, Landmark, RotateCcw, Scale, ScrollText, Send, ShieldCheck, Users } from 'lucide-react'
 import { isStaffRole, type Permission } from '@surescore/shared'
 import { Loading } from '../../../components/bits'
 import { useAuth } from '../../auth/auth-context'
@@ -10,9 +10,10 @@ const NAV: { to: string; label: string; icon: typeof Activity; permission: Permi
   { to: '/admin/pots', label: 'Pots', icon: Landmark, permission: 'pots.view' },
   { to: '/admin/payouts', label: 'Payouts', icon: Send, permission: 'transfers.view' },
   { to: '/admin/refunds', label: 'Refunds', icon: RotateCcw, permission: 'transfers.view' },
+  { to: '/admin/users', label: 'Users', icon: Users, permission: 'users.view' },
   { to: '/admin/ledger', label: 'Ledger', icon: BookOpen, permission: 'ledger.view' },
   { to: '/admin/reconciliation', label: 'Reconciliation', icon: Scale, permission: 'reconciliation.view' },
-  { to: '/admin/staff', label: 'Staff', icon: Users, permission: 'staff.view' },
+  { to: '/admin/staff', label: 'Staff', icon: ShieldCheck, permission: 'staff.view' },
   { to: '/admin/audit', label: 'Audit log', icon: ScrollText, permission: 'audit.view' },
 ]
 

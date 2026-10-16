@@ -15,6 +15,7 @@ import {
 	regulationOutcome,
 	type MatchOutcome,
 	type PayoutRequest,
+	type SettlementMatch,
 } from "@surescore/shared";
 import { PrismaLedgerStore, type LedgerStore } from "../payments/ledger.js";
 import { pickPayoutAccount } from "../payments/payout-recipient.js";
@@ -45,6 +46,39 @@ export function latestPerAction<T extends Pick<TransferRow, "entryKey" | "idempo
 		if (!seen || attemptOf(row) > attemptOf(seen)) latest.set(row.idempotencyKey, row);
 	}
 	return [...latest.values()];
+}
+
+type ScorePick = { homeGoals: number; awayGoals: number; firstGoalMinute: number | null };
+
+/** The regulation result a pot settles on: an admin override (T10.5) wins over the cached provider result. */
+export function settlementOutcome(
+	event: SettlementMatch,
+	override: ScorePick | null,
+): MatchOutcome | null {
+	if (!override) return regulationOutcome(event);
+	return {
+		home: override.homeGoals,
+		away: override.awayGoals,
+		firstGoalMinute: override.firstGoalMinute,
+		underdog: event.underdog as MatchOutcome["underdog"],
+	};
+}
+
+/** Ranks predictions on `outcome` and splits the prize; settlement pays exactly `payouts`. */
+export function rankAndDistribute<T extends ScorePick>(
+	predictions: T[],
+	outcome: MatchOutcome,
+	pot: { winnerCount: number; prizeAmountMinorUnits: number },
+) {
+	const ranked = rankPredictions(
+		predictions.map((prediction) => ({
+			item: prediction,
+			pick: { home: prediction.homeGoals, away: prediction.awayGoals, firstGoalMinute: prediction.firstGoalMinute },
+		})),
+		outcome,
+		{ tieBreaks: DEFAULT_TIE_BREAKS },
+	);
+	return { ranked, payouts: distributePrizes(ranked, pot.winnerCount, pot.prizeAmountMinorUnits) };
 }
 
 export class SettlementService {
@@ -84,16 +118,8 @@ export class SettlementService {
 		});
 		if (!pot || pot.status !== "Settling") return false;
 
-		// A manual override (T10.5) replaces the cached provider result.
 		const override = await this.db.settlementOverride.findUnique({ where: { potId } });
-		const outcome = override
-			? {
-					home: override.homeGoals,
-					away: override.awayGoals,
-					firstGoalMinute: override.firstGoalMinute,
-					underdog: pot.event.underdog as MatchOutcome["underdog"],
-				}
-			: regulationOutcome(pot.event);
+		const outcome = settlementOutcome(pot.event, override);
 		if (!outcome) return false;
 
 		// Nobody to pay: the potter is refunded the prize less the platform fee.
@@ -101,17 +127,10 @@ export class SettlementService {
 			return this.pots.cancel(pot, SYSTEM_ACTOR, "no-winner");
 		}
 
-		const ranked = rankPredictions(
-			pot.predictions.map((prediction) => ({
-				item: prediction,
-				pick: { home: prediction.homeGoals, away: prediction.awayGoals, firstGoalMinute: prediction.firstGoalMinute },
-			})),
-			outcome,
-			{ tieBreaks: DEFAULT_TIE_BREAKS },
-		);
+		const { ranked, payouts } = rankAndDistribute(pot.predictions, outcome, pot);
 
 		const jobs: TransferJob[] = [];
-		for (const { entry, amountMinorUnits } of distributePrizes(ranked, pot.winnerCount, pot.prizeAmountMinorUnits)) {
+		for (const { entry, amountMinorUnits } of payouts) {
 			const { user } = entry.item;
 			const account = pickPayoutAccount(user.payoutAccounts, pot.countryCode);
 			const base = {

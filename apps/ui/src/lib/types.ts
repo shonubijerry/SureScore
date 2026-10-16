@@ -152,11 +152,6 @@ export interface PotSettlement {
 
 // ---- Admin console ----
 
-export interface Page<T> {
-  items: T[]
-  nextCursor: string | null
-}
-
 export interface AdminPotRow {
   id: string
   status: PotStatus
@@ -188,6 +183,8 @@ export interface TransferRow {
   status: string
   potId: string
   potStatus: string | null
+  userId: string
+  displayName: string | null
   email: string | null
   phone: string | null
   currency: string
@@ -200,10 +197,36 @@ export interface TransferRow {
   hasPayoutAccount: boolean | null
 }
 
+export interface PotWinner {
+  rank: number
+  userId: string
+  displayName: string | null
+  email: string | null
+  phone: string | null
+  prediction: { homeGoals: number; awayGoals: number; firstGoalMinute: number | null; submittedAt: string }
+  breakdown: ScoreBreakdown
+  /** Tie-break module scores by name (higher wins). */
+  tieBreaks: Record<string, number>
+  /** What the prize rules award this rank (ties merge and split slots). */
+  prizeMinorUnits: number
+  payout: {
+    idempotencyKey: string
+    status: string
+    amountMinorUnits: number
+    reference: string | null
+    detail: string | null
+    lastAttemptAt: string
+  } | null
+}
+
 export interface AdminPotDetail {
-  pot: Omit<AdminPotRow, 'event'>
-  event: AdminPotRow['event']
+  pot: Omit<AdminPotRow, 'event'> & { winnerCount: number }
+  event: AdminPotRow['event'] & { homeScore: number | null; awayScore: number | null; isFinalResultOfficial: boolean; firstGoalMinute: number | null }
   predictionCount: number
+  /** The settling result (override or official), else the live score; null before any score. */
+  result: { homeGoals: number; awayGoals: number; firstGoalMinute: number | null; final: boolean; source: 'override' | 'provider' } | null
+  prize: { winnerPool: number; platformFee: number; winnerCount: number }
+  winners: PotWinner[]
   override: { homeGoals: number; awayGoals: number; reason: string } | null
   transitions: { id: string; fromStatus: string | null; toStatus: string; reason: string | null; createdAt: string }[]
   notes: { id: string; action: string; reason: string; createdAt: string; actorId: string }[]
@@ -237,6 +260,13 @@ export interface Finding {
 export interface ReconciliationStatus {
   run: { startedAt: string; status?: string; summary: unknown } | null
   open: Record<string, number>
+}
+
+export interface AdminUserDetail {
+  user: StaffUser & { emailVerifiedAt: string | null; updatedAt: string }
+  payoutAccounts: (PayoutAccount & { deletedAt?: string | null })[]
+  stats: { potsCreated: number; predictions: number }
+  totals: { type: string; currency: string; amountMinorUnits: number }[]
 }
 
 export interface StaffUser {

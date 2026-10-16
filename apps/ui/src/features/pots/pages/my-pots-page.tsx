@@ -8,8 +8,6 @@ import { api } from '../../../lib/api'
 import type { PotCard as Pot } from '../../../lib/types'
 import { usePaged } from '../../../lib/use-paged'
 
-const PAGE_SIZE = 10
-
 const FILTERS = [
   { key: 'all', label: 'All' },
   { key: 'created', label: 'Created' },
@@ -74,7 +72,7 @@ export default function MyPotsPage() {
     setSearchParams(next, { replace: true })
   }
 
-  const list = usePaged<Pot, 'pots'>(`/api/pots?role=${filter}${showCancelled ? '&includeCancelled=true' : ''}`, PAGE_SIZE, 'pots')
+  const list = usePaged<Pot, 'pots'>(`/api/pots?role=${filter}${showCancelled ? '&includeCancelled=true' : ''}`, 'pots')
 
   useEffect(() => {
     if (!verifyPotId) return

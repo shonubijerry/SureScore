@@ -4,15 +4,16 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ErrorNote, Loading, Section } from '../../../components/bits'
 import { MatchHeader } from '../components/match-card'
-import { fromQuery, PotList } from '../../pots/components/pot-list'
+import { PotList } from '../../pots/components/pot-list'
 import { queryString } from '../../../lib/api'
 import type { Match, PotCard as Pot } from '../../../lib/types'
 import { useApi } from '../../../lib/use-api'
+import { usePaged } from '../../../lib/use-paged'
 
 export default function MatchDetailPage() {
   const { id = '' } = useParams()
   const match = useApi<{ match: Match }>(`/api/sports/matches/${encodeURIComponent(id)}`)
-  const pots = useApi<{ pots: Pot[] }>(`/api/discover/pots${queryString({ eventId: id })}`)
+  const pots = usePaged<Pot, 'pots'>(`/api/discover/pots${queryString({ eventId: id })}`, 'pots')
 
   if (match.loading) return <Loading />
   if (match.error || !match.data) return <ErrorNote error={match.error ?? new Error('Match not found.')} onRetry={match.reload} />
@@ -37,7 +38,7 @@ export default function MatchDetailPage() {
         </CardContent>
       </Card>
       <Section title="Pots for this match">
-        <PotList list={fromQuery(pots, pots.data?.pots)} empty="No public pots for this match yet." />
+        <PotList list={pots} empty="No public pots for this match yet." />
       </Section>
     </>
   )

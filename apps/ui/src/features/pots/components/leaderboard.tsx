@@ -1,9 +1,9 @@
-import { useState } from 'react'
 import type { ScoreBreakdown } from '@surescore/shared'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Pager } from '../../../components/pager'
 import { formatKickoff } from '../../../lib/format'
 import type { LeaderboardEntry } from '../../../lib/types'
+import type { Pages } from '../../../lib/use-paged'
 
 const PARTS: [keyof ScoreBreakdown, string][] = [
   ['outcome', 'Result'],
@@ -28,40 +28,23 @@ export function Breakdown({ breakdown }: { breakdown: ScoreBreakdown }) {
   )
 }
 
-/** Rows revealed per "Show more". */
-const VIEW_SIZE = 50
-
 /**
- * Ranked entries, 50 on screen at a time. Before lock entries come without picks or breakdowns, so
- * everyone shows 0 pts. A paged source passes `hasMore`/`loadMore`: the next batch is fetched only
- * once every loaded row is on screen.
+ * One page of ranked entries with the pager (`usePaged`, or `usePages` over a full ranking). Before
+ * lock entries come without picks or breakdowns, so everyone shows 0 pts.
  */
 export function Leaderboard({
-  entries,
+  list,
   winnerCount,
   myUserId,
-  hasMore = false,
-  loadingMore = false,
-  loadMore,
 }: {
-  entries: LeaderboardEntry[]
+  list: Omit<Pages<unknown>, 'pageItems'> & { pageItems: LeaderboardEntry[]; hasMore?: boolean; loadingMore?: boolean; loadMore?: () => void }
   winnerCount: number
   myUserId?: string
-  hasMore?: boolean
-  loadingMore?: boolean
-  loadMore?: () => Promise<void>
 }) {
-  const [shown, setShown] = useState(VIEW_SIZE)
-
-  const showMore = async () => {
-    if (shown >= entries.length && hasMore) await loadMore?.()
-    setShown((n) => n + VIEW_SIZE)
-  }
-
   return (
     <div className="space-y-3">
       <ol className="space-y-2">
-        {entries.slice(0, shown).map((entry) => (
+        {list.pageItems.map((entry) => (
           <li
             key={entry.userId}
             className={`space-y-2 rounded-2xl border p-3 ${entry.userId === myUserId ? 'border-primary' : 'border-border'}`}
@@ -93,11 +76,7 @@ export function Leaderboard({
           </li>
         ))}
       </ol>
-      {(shown < entries.length || hasMore) && (
-        <Button variant="outline" size="lg" className="h-11 w-full" onClick={showMore} disabled={loadingMore}>
-          {loadingMore ? 'Loading…' : 'Show more'}
-        </Button>
-      )}
+      <Pager list={list} />
     </div>
   )
 }

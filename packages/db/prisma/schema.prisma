@@ -73,6 +73,8 @@ model User {
 
   @@index([countryCode])
   @@index([phone])
+  @@index([createdAt, id]) // admin user directory, newest first (keyset)
+  @@index([role, createdAt, id]) // staff list
 }
 
 // Where a user's winnings are paid out. Provider is derived from countryCode
@@ -134,6 +136,7 @@ model SportsEventCache {
   @@index([status])
   @@index([kickoffTimeUtc])
   @@index([status, importance])
+  @@index([status, kickoffTimeUtc, id]) // upcoming/live/results lists (keyset)
 }
 
 // Append-only financial ledger. Rows are never updated or deleted: every
@@ -162,6 +165,8 @@ model LedgerEntry {
   @@index([potId])
   @@index([type, status, createdAt])
   @@index([reference])
+  @@index([type, createdAt, id]) // payout/refund queues without a status filter (keyset)
+  @@index([createdAt, id]) // ledger search, newest first
 }
 
 // A funded prediction pot tied to one match. Currency and payment provider are
@@ -192,6 +197,9 @@ model Pot {
   @@index([eventId])
   @@index([status])
   @@index([isPrivate, status])
+  @@index([updatedAt, id]) // admin pot list, most recently changed first (keyset)
+  @@index([status, updatedAt, id]) // admin pot list filtered by state
+  @@index([potterId, createdAt, id]) // "my pots", newest first
 }
 
 // Append-only audit trail: one row per pot state transition.
@@ -225,6 +233,7 @@ model AdminAuditLog {
   @@index([potId, createdAt])
   @@index([createdAt])
   @@index([actorId, createdAt])
+  @@index([action, createdAt]) // audit log filtered by action
 }
 
 // Admin-supplied regulation result used instead of the cached match when the
@@ -285,4 +294,5 @@ model ReconciliationFinding {
 
   @@index([status, severity])
   @@index([potId])
+  @@index([status, createdAt, id]) // findings list (keyset)
 }

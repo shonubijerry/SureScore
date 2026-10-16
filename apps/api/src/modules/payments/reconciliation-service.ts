@@ -14,7 +14,7 @@ import {
 	type ReconPot,
 } from "@surescore/shared";
 import { inChunks } from "../../platform/chunk.js";
-import { pageArgs, toPage } from "../../http/pagination.js";
+import { newestFirst, paginate, type PageParams } from "../../http/pagination.js";
 import { fail } from "../pots/pot-service.js";
 import type { AdminPotService } from "../admin/pots.js";
 
@@ -121,13 +121,8 @@ export class ReconciliationService {
 		};
 	}
 
-	async findings({ status, limit, cursor }: { status: string; limit?: number; cursor?: string }) {
-		const rows = await this.db.reconciliationFinding.findMany({
-			where: { status },
-			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-			...pageArgs({ limit, cursor }),
-		});
-		return toPage(rows, limit);
+	findings({ status, ...page }: { status: string } & PageParams) {
+		return paginate(newestFirst, page, { status }, (args) => this.db.reconciliationFinding.findMany(args));
 	}
 
 	async resolve(adminId: string, findingId: string, note: string) {

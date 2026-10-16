@@ -2,10 +2,15 @@ import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
 import { createDbClient } from "@surescore/db";
 import { liveMatchStatuses } from "@surescore/shared";
-import { pageArgs, pageQuery, toPage } from "../../http/pagination.js";
+import { paginate, pageQuery, type SortOrder } from "../../http/pagination.js";
 import type { AppContext } from "../../types.js";
 import { potCard, potCardInclude } from "../../http/views.js";
 import { potCardSchema } from "./schema.js";
+
+const byKickoff: SortOrder = [
+	{ path: "pot.event.kickoffTimeUtc", dir: "asc", type: "date" },
+	{ path: "id", dir: "asc" },
+];
 
 export class ListPredictedPotsEndpoint extends OpenAPIRoute {
 	schema = {
@@ -34,19 +39,16 @@ export class ListPredictedPotsEndpoint extends OpenAPIRoute {
 
 	async handle(c: AppContext) {
 		const { query } = await this.getValidatedData<typeof this.schema>();
-		const rows = await createDbClient(c.env.DB).prediction.findMany({
-			where: {
-				userId: c.get("userId"),
-				pot: {
-					status: { notIn: ["Draft", "Cancelled", "Refunded"] },
-					event: { status: { in: ["scheduled", ...liveMatchStatuses] } },
-				},
+		const where = {
+			userId: c.get("userId"),
+			pot: {
+				status: { notIn: ["Draft", "Cancelled", "Refunded"] },
+				event: { status: { in: ["scheduled", ...liveMatchStatuses] } },
 			},
-			include: { pot: { include: potCardInclude } },
-			orderBy: [{ pot: { event: { kickoffTimeUtc: "asc" } } }, { id: "asc" }],
-			...pageArgs(query),
-		});
-		const { items, nextCursor } = toPage(rows, query.limit);
+		};
+		const { items, nextCursor } = await paginate(byKickoff, query, where, (args) =>
+			createDbClient(c.env.DB).prediction.findMany({ ...args, include: { pot: { include: potCardInclude } } }),
+		);
 		const now = new Date();
 		return c.json({
 			nextCursor,

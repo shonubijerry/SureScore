@@ -1,7 +1,7 @@
 import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
 import { createDbClient } from "@surescore/db";
-import { pageArgs, pageQuery, toPage } from "../../http/pagination.js";
+import { newestFirst, paginate, pageQuery } from "../../http/pagination.js";
 import type { AppContext } from "../../types.js";
 
 const entrySchema = z.object({
@@ -42,8 +42,8 @@ export class GetWalletEndpoint extends OpenAPIRoute {
 		const db = createDbClient(c.env.DB);
 		const userId = c.get("userId");
 
-		const [entries, sums] = await Promise.all([
-			db.ledgerEntry.findMany({ where: { userId }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], ...pageArgs(query) }),
+		const [page, sums] = await Promise.all([
+			paginate(newestFirst, query, { userId }, (args) => db.ledgerEntry.findMany(args)),
 			db.ledgerEntry.groupBy({
 				by: ["type", "currency"],
 				where: { userId, status: "successful" },
@@ -51,7 +51,6 @@ export class GetWalletEndpoint extends OpenAPIRoute {
 			}),
 		]);
 
-		const page = toPage(entries, query.limit);
 		return c.json({
 			nextCursor: page.nextCursor,
 			totals: sums.map((s) => ({ type: s.type, currency: s.currency, amountMinorUnits: s._sum.amountMinorUnits ?? 0 })),

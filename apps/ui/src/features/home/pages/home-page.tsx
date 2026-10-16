@@ -3,18 +3,18 @@ import { Button } from '@/components/ui/button'
 import { Section } from '../../../components/bits'
 import { LeagueGrid } from '../../matches/components/league-grid'
 import { MatchTabs, type MatchTab } from '../../matches/components/match-tabs'
-import { fromQuery, PotList } from '../../pots/components/pot-list'
+import { PotList } from '../../pots/components/pot-list'
 import { useAuth } from '../../auth/auth-context'
 import type { PredictedPot } from '../../../lib/types'
-import { useApi } from '../../../lib/use-api'
+import { usePaged } from '../../../lib/use-paged'
 
 // Live scores refresh server-side every 10 minutes; polling faster adds nothing.
 const LIVE_REFRESH_MS = 120_000
 
 function MyMatches() {
-  const query = useApi<{ predictions: PredictedPot[] }>('/api/pots/predicted', LIVE_REFRESH_MS)
-  const pots = query.data?.predictions.map(({ pot, ...myPrediction }) => ({ ...pot, myPrediction }))
-  return <PotList list={fromQuery(query, pots)} empty="You haven't predicted any upcoming or live matches yet. Pick a pot below!" />
+  const list = usePaged<PredictedPot, 'predictions'>('/api/pots/predicted', 'predictions', { refreshMs: LIVE_REFRESH_MS })
+  const pageItems = list.pageItems.map(({ pot, ...myPrediction }) => ({ ...pot, myPrediction }))
+  return <PotList list={{ ...list, pageItems }} empty="You haven't predicted any upcoming or live matches yet. Pick a pot below!" />
 }
 
 const HOME_TABS: MatchTab[] = [

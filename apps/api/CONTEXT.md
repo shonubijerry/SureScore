@@ -20,8 +20,9 @@
   - pots/: pot-service.ts (lifecycle), pot-access.ts (private pots), prediction-service.ts, settlement-service.ts
   - payments/: ledger.ts (append-only), transfer-queue.ts (payouts/refunds), payout-recipient.ts, reconciliation-service.ts
   - sports/: cache-repository.ts, ingestion.ts (prefetch/live refresh/freshness), cleanup.ts (old-match pruning)
-  - admin/: ops.ts, pots.ts, staff.ts, transfers.ts, alerts.ts, audit.ts
+  - admin/: ops.ts, pots.ts, staff.ts, users.ts, transfers.ts, alerts.ts, audit.ts
 - src/http/: request/response plumbing shared by routes: middleware.ts (auth guards), rate-limit.ts, openapi.ts, pagination.ts, views.ts (match/pot response shapes)
+- Every list endpoint pages through `paginate` (src/http/pagination.ts): `pageQuery` params (limit default/max 1000, opaque cursor), a `SortOrder` ending in a unique key, keyset `WHERE` on those keys (no offset/skip). Add a composite index matching filter + sort keys for each new list
 - src/platform/: cross-cutting infrastructure: logger.ts, job-runs.ts, chunk.ts (D1 `in` batching), secure-data.ts (account-number encryption)
 - src/providers/{payment,sports,sms,email}/: third-party adapters only, plus registry.ts
 - test/ mirrors src: test/{admin,auth,payments,pots,sports,http,platform,providers}, test/rules + test/identity for @surescore/shared rules, test/e2e for full flows; DB-backed specs call `applyMigrations` from test/helpers/db.ts

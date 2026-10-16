@@ -5,7 +5,7 @@
 import { HTTPException } from "hono/http-exception";
 import { createDbClient, type Pot, type Prediction, type SportsEventCache } from "@surescore/db";
 import { assertPotAccess } from "./pot-access.js";
-import { PAGE_DEFAULT, PAGE_MAX, toPage, type PageParams } from "../../http/pagination.js";
+import { paginate, type PageParams, type SortOrder } from "../../http/pagination.js";
 import {
 	assertHasCompletedPayoutDetails,
 	DEFAULT_TIE_BREAKS,
@@ -26,6 +26,9 @@ export interface PredictionInput {
 }
 
 type Outcome = { actual: MatchOutcome; final: boolean } | null;
+
+/** Entry order: ids are cuids, so this is roughly submission order and served by the (potId, id) index. */
+const byId: SortOrder = [{ path: "id", dir: "asc" }];
 
 const fail = (status: 400 | 403 | 404 | 409, message: string): never => {
 	throw new HTTPException(status, { message });
@@ -168,7 +171,7 @@ export class PredictionService {
 	}
 
 	/**
-	 * Everyone who has predicted, oldest first, one keyset page at a time (`id > cursor` on the
+	 * Everyone who has predicted, oldest first, one keyset page at a time (`id > last id` on the
 	 * (potId, id) index, so D1 reads only the page's rows). This is the leaderboard before lock,
 	 * when nothing is ranked yet; picks stay null until the prediction lock so they cannot be copied.
 	 */
@@ -178,14 +181,9 @@ export class PredictionService {
 		await assertPotAccess(this.db, pot, viewer);
 
 		const revealed = isPredictionLocked(pot.event.kickoffTimeUtc, now);
-		const limit = Math.min(page.limit ?? PAGE_DEFAULT, PAGE_MAX);
-		const rows = await this.db.prediction.findMany({
-			where: { potId, ...(page.cursor && { id: { gt: page.cursor } }) },
-			include: { user: { select: { displayName: true } } },
-			orderBy: { id: "asc" },
-			take: limit + 1,
-		});
-		const { items, nextCursor } = toPage(rows, limit);
+		const { items, nextCursor } = await paginate(byId, page, { potId }, (args) =>
+			this.db.prediction.findMany({ ...args, include: { user: { select: { displayName: true } } } }),
+		);
 
 		return {
 			revealed,

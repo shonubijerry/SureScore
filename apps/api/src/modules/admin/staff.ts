@@ -2,36 +2,24 @@
 // request (see middleware), so a change here takes effect immediately.
 
 import { createDbClient } from "@surescore/db";
-import { isRole, normalizeEmail, resolveSignupCountry, type Role } from "@surescore/shared";
+import { isRole, normalizeEmail, resolveSignupCountry, staffRoles, type Role } from "@surescore/shared";
 import { recordAudit } from "./audit.js";
 import { inChunks } from "../../platform/chunk.js";
 import { hashPassword } from "../auth/password.js";
-import { pageArgs, toPage } from "../../http/pagination.js";
+import { newestFirst, paginate, type PageParams } from "../../http/pagination.js";
+import { AdminUserService, publicUser } from "./users.js";
 import { fail } from "../pots/pot-service.js";
-
-const publicUser = { id: true, phone: true, email: true, displayName: true, role: true, countryCode: true, createdAt: true } as const;
 
 export class AdminStaffService {
 	private readonly db;
 
-	constructor(database: D1Database) {
+	constructor(private readonly database: D1Database) {
 		this.db = createDbClient(database);
 	}
 
-	async list({ q, role, limit, cursor }: { q?: string; role?: Role; limit?: number; cursor?: string }) {
-		const term = q?.trim();
-		const rows = await this.db.user.findMany({
-			where: {
-				role: role ?? { in: ["staff", "admin"] },
-				...(term
-					? { OR: [{ phone: { contains: term } }, { email: { contains: term.toLowerCase() } }, { displayName: { contains: term } }] }
-					: {}),
-			},
-			select: publicUser,
-			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-			...pageArgs({ limit, cursor }),
-		});
-		return toPage(rows, limit);
+	/** Back-office accounts only; the full user directory is AdminUserService.list. */
+	list({ role, ...search }: { q?: string; role?: Role } & PageParams) {
+		return new AdminUserService(this.database).list({ ...search, roles: role ? [role] : [...staffRoles] });
 	}
 
 	/** Creates a back-office account, or promotes an existing user, with a mandatory reason. */
@@ -80,13 +68,9 @@ export class AdminStaffService {
 	}
 
 	/** Audit trail, newest first, with the actor's email (or phone) attached. */
-	async audit({ action, actorId, potId, limit, cursor }: { action?: string; actorId?: string; potId?: string; limit?: number; cursor?: string }) {
-		const rows = await this.db.adminAuditLog.findMany({
-			where: { ...(action && { action }), ...(actorId && { actorId }), ...(potId && { potId }) },
-			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-			...pageArgs({ limit, cursor }),
-		});
-		const page = toPage(rows, limit);
+	async audit({ action, actorId, potId, ...params }: { action?: string; actorId?: string; potId?: string } & PageParams) {
+		const where = { ...(action && { action }), ...(actorId && { actorId }), ...(potId && { potId }) };
+		const page = await paginate(newestFirst, params, where, (args) => this.db.adminAuditLog.findMany(args));
 		const actors = await inChunks([...new Set(page.items.map((r) => r.actorId))], (ids) =>
 			this.db.user.findMany({ where: { id: { in: ids } }, select: { id: true, email: true, phone: true } }),
 		);

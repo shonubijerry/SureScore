@@ -1,7 +1,7 @@
 import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
 import { createDbClient } from "@surescore/db";
-import { pageQuery } from "../../http/pagination.js";
+import { paginateArray, pageQuery, type SortOrder } from "../../http/pagination.js";
 import type { AppContext } from "../../types.js";
 import { toRecord } from "../../modules/sports/cache-repository.js";
 import { matchView } from "../../http/views.js";
@@ -10,11 +10,16 @@ import { sportsEventSchema } from "../sports/schema.js";
 /** Size of the popular set: the most prominent upcoming matches. */
 const MAX_POPULAR = 20;
 
+const byKickoff: SortOrder = [
+	{ path: "kickoffTimeUtc", dir: "asc", type: "date" },
+	{ path: "id", dir: "asc" },
+];
+
 export class ListPopularMatchesEndpoint extends OpenAPIRoute {
 	schema = {
 		tags: ["Discovery"],
 		summary: "The most prominent upcoming matches (provider-signalled importance), soonest kickoff first",
-		request: { query: z.object({ ...pageQuery, cursor: z.string().optional().describe("Cache id of the last match on the previous page") }) },
+		request: { query: z.object(pageQuery) },
 		responses: {
 			"200": {
 				description: "Popular matches",
@@ -33,14 +38,12 @@ export class ListPopularMatchesEndpoint extends OpenAPIRoute {
 			take: MAX_POPULAR,
 			include: { _count: { select: { pots: { where: { status: "Open", isPrivate: false } } } } },
 		});
-		// Importance picks which matches are popular; they are listed by date.
+		// Importance picks which matches are popular; they are listed by date, and a page is a window of that fixed set.
 		events.sort((a, b) => a.kickoffTimeUtc.getTime() - b.kickoffTimeUtc.getTime() || a.id.localeCompare(b.id));
-		const start = query.cursor ? events.findIndex((e) => e.id === query.cursor) + 1 : 0;
-		const page = events.slice(start, start + query.limit);
-		const hasMore = start + query.limit < events.length;
+		const { items, nextCursor } = paginateArray(events, byKickoff, query);
 		return c.json({
-			matches: page.map((event) => ({ ...matchView(toRecord(event), now), potCount: event._count.pots })),
-			nextCursor: hasMore ? page[page.length - 1].id : null,
+			matches: items.map((event) => ({ ...matchView(toRecord(event), now), potCount: event._count.pots })),
+			nextCursor,
 		});
 	}
 }

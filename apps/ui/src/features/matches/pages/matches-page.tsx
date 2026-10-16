@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom'
 import { getLeagueConfig } from '@surescore/shared'
-import { ListState, Section } from '../../../components/bits'
+import { Empty, ErrorNote, Loading, Section } from '../../../components/bits'
+import { Pager } from '../../../components/pager'
 import { LeagueLogo } from '../components/league-grid'
 import { MatchCard } from '../components/match-card'
 import { leagueName } from '../../../lib/format'
 import type { Match } from '../../../lib/types'
-import { useApi } from '../../../lib/use-api'
+import { usePaged } from '../../../lib/use-paged'
 
 /** Groups matches by league, keeping the API's kickoff order: leagues by their first match, matches within each. */
 function byLeague(matches: Match[]) {
@@ -31,25 +32,34 @@ function LeagueHeading({ code }: { code: string }) {
   )
 }
 
+function UpcomingMatches() {
+  const list = usePaged<Match, 'matches'>('/api/sports/matches/upcoming', 'matches')
+  if (list.loading) return <Loading />
+  if (!list.items.length)
+    return list.error ? <ErrorNote error={list.error} onRetry={list.reload} /> : <Empty>No upcoming matches yet. Fixtures refresh every few hours.</Empty>
+
+  return (
+    <div className="space-y-6">
+      {byLeague(list.pageItems).map(([code, leagueMatches]) => (
+        <section key={code} className="space-y-3">
+          <LeagueHeading code={code} />
+          <div className="grid gap-3 md:grid-cols-2">
+            {leagueMatches.map((match) => (
+              <MatchCard key={match.cacheId} match={match} />
+            ))}
+          </div>
+        </section>
+      ))}
+      {list.error && <ErrorNote error={list.error} />}
+      <Pager list={list} />
+    </div>
+  )
+}
+
 export default function MatchesPage() {
-  const query = useApi<{ matches: Match[] }>('/api/sports/matches/upcoming')
-  const list = { ...query, data: query.data?.matches ?? null }
   return (
     <Section title="Upcoming matches">
-      <ListState query={list} empty="No upcoming matches yet. Fixtures refresh every few hours.">
-        {(matches) =>
-          byLeague(matches).map(([code, leagueMatches]) => (
-            <section key={code} className="space-y-3 md:col-span-2">
-              <LeagueHeading code={code} />
-              <div className="grid gap-3 md:grid-cols-2">
-                {leagueMatches.map((match) => (
-                  <MatchCard key={match.cacheId} match={match} />
-                ))}
-              </div>
-            </section>
-          ))
-        }
-      </ListState>
+      <UpcomingMatches />
     </Section>
   )
 }

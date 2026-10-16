@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Section } from '../../../components/bits'
@@ -9,7 +9,8 @@ import type { LedgerRow } from '../../../lib/types'
 import { DataTable, inputClass, toneFor, usePaged, when } from '../components/kit'
 
 export default function Ledger() {
-  const [form, setForm] = useState({ q: '', type: '', status: '' })
+  const [params] = useSearchParams()
+  const [form, setForm] = useState({ q: params.get('q') ?? '', type: '', status: '' })
   const [applied, setApplied] = useState(form)
   const query = usePaged<LedgerRow>(`/api/admin/ledger${queryString(applied)}`)
   const set = (key: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [key]: e.target.value })
@@ -47,7 +48,14 @@ export default function Ledger() {
           { header: 'Type', cell: (r) => r.type },
           { header: 'Status', cell: (r) => <Badge variant={toneFor(r.status)}>{r.status}</Badge> },
           { header: 'Amount', cell: (r) => formatMoney(r.amountMinorUnits, r.currency) },
-          { header: 'User', cell: (r) => r.user?.email ?? r.user?.phone ?? r.userId },
+          {
+            header: 'User',
+            cell: (r) => (
+              <Link className="underline" to={`/admin/users/${r.userId}`}>
+                {r.user?.email ?? r.user?.phone ?? r.userId}
+              </Link>
+            ),
+          },
           {
             header: 'Pot',
             cell: (r) => (

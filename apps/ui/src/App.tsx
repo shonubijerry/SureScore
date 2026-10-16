@@ -18,6 +18,8 @@ const AdminPotList = lazy(() => import('./features/admin/pages/pots-page').then(
 const AdminPotDetail = lazy(() => import('./features/admin/pages/pots-page').then((m) => ({ default: m.PotDetail })))
 const AdminTransfers = lazy(() => import('./features/admin/pages/transfers-page'))
 const AdminLedger = lazy(() => import('./features/admin/pages/ledger-page'))
+const AdminUserList = lazy(() => import('./features/admin/pages/users-page').then((m) => ({ default: m.UserList })))
+const AdminUserDetail = lazy(() => import('./features/admin/pages/users-page').then((m) => ({ default: m.UserDetail })))
 const AdminReconciliation = lazy(() => import('./features/admin/pages/reconciliation-page'))
 const AdminStaff = lazy(() => import('./features/admin/pages/staff-page'))
 const AdminAudit = lazy(() => import('./features/admin/pages/audit-page'))
@@ -58,6 +60,8 @@ export default function App() {
                 <Route path="pots/:id" element={<AdminPotDetail />} />
                 <Route path="payouts" element={<AdminTransfers type="payouts" />} />
                 <Route path="refunds" element={<AdminTransfers type="refunds" />} />
+                <Route path="users" element={<AdminUserList />} />
+                <Route path="users/:id" element={<AdminUserDetail />} />
                 <Route path="ledger" element={<AdminLedger />} />
                 <Route path="reconciliation" element={<AdminReconciliation />} />
                 <Route path="staff" element={<AdminStaff />} />

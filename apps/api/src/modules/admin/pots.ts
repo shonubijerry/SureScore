@@ -5,10 +5,10 @@
 
 import { recordAudit, type AuditAction } from "./audit.js";
 import { createDbClient, type Pot } from "@surescore/db";
-import type { PotStatus } from "@surescore/shared";
+import { DEFAULT_TIE_BREAKS, splitPrizePool, type MatchOutcome, type PotStatus } from "@surescore/shared";
 import { fail, PotService, type Actor } from "../pots/pot-service.js";
-import { SettlementService } from "../pots/settlement-service.js";
-import { pageArgs, toPage } from "../../http/pagination.js";
+import { latestPerAction, rankAndDistribute, settlementOutcome, SettlementService } from "../pots/settlement-service.js";
+import { paginate, type PageParams, type SortOrder } from "../../http/pagination.js";
 
 export interface OverrideInput {
 	homeGoals: number;
@@ -18,6 +18,12 @@ export interface OverrideInput {
 }
 
 const OVERRIDABLE: PotStatus[] = ["Live", "Settling", "Disputed"];
+
+/** Most recently changed first, so pots needing attention surface at the top. */
+const byLastUpdate: SortOrder = [
+	{ path: "updatedAt", dir: "desc", type: "date" },
+	{ path: "id", dir: "desc" },
+];
 
 export class AdminPotService {
 	private readonly db;
@@ -48,27 +54,83 @@ export class AdminPotService {
 		}));
 	}
 
-	async list({ status, limit, cursor }: { status?: string; limit?: number; cursor?: string }) {
-		const rows = await this.db.pot.findMany({
-			where: status ? { status } : {},
-			include: { event: { select: { homeTeam: true, awayTeam: true, kickoffTimeUtc: true, status: true } } },
-			orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-			...pageArgs({ limit, cursor }),
-		});
-		return toPage(rows, limit);
+	list({ status, ...page }: { status?: string } & PageParams) {
+		return paginate(byLastUpdate, page, status ? { status } : {}, (args) =>
+			this.db.pot.findMany({
+				...args,
+				include: { event: { select: { homeTeam: true, awayTeam: true, kickoffTimeUtc: true, status: true } } },
+			}),
+		);
 	}
 
 	async detail(potId: string) {
 		const pot = await this.requirePot(potId);
-		const [event, transitions, notes, override, ledger, predictionCount] = await Promise.all([
+		const [event, transitions, notes, override, ledger, predictions, payoutRows] = await Promise.all([
 			this.db.sportsEventCache.findUniqueOrThrow({ where: { id: pot.eventId } }),
 			this.db.potStateTransition.findMany({ where: { potId }, orderBy: { createdAt: "asc" } }),
 			this.db.adminAuditLog.findMany({ where: { potId }, orderBy: { createdAt: "desc" }, take: 100 }),
 			this.db.settlementOverride.findUnique({ where: { potId } }),
 			this.db.ledgerEntry.findMany({ where: { potId }, orderBy: { createdAt: "desc" }, take: 100 }),
-			this.db.prediction.count({ where: { potId } }),
+			this.db.prediction.findMany({
+				where: { potId },
+				include: { user: { select: { displayName: true, email: true, phone: true } } },
+				orderBy: { createdAt: "asc" },
+			}),
+			this.db.ledgerEntry.findMany({ where: { potId, type: "payout" } }),
 		]);
-		return { pot, event, transitions, notes, override, ledger, predictionCount };
+
+		// The settling result if there is one, else the live score as a provisional ranking.
+		const settling = settlementOutcome(event, override);
+		const outcome: MatchOutcome | null =
+			settling ??
+			(event.homeScore != null && event.awayScore != null
+				? { home: event.homeScore, away: event.awayScore, firstGoalMinute: event.firstGoalMinute, underdog: event.underdog as MatchOutcome["underdog"] }
+				: null);
+		const result = outcome && {
+			homeGoals: outcome.home,
+			awayGoals: outcome.away,
+			firstGoalMinute: outcome.firstGoalMinute ?? null,
+			final: settling !== null,
+			source: override ? ("override" as const) : ("provider" as const),
+		};
+
+		const payouts = outcome && predictions.length ? rankAndDistribute(predictions, outcome, pot).payouts : [];
+		const transferByUser = new Map(latestPerAction(payoutRows).map((row) => [row.userId, row]));
+		const winners = payouts.map(({ entry: { rank, item, breakdown, tieBreaks }, amountMinorUnits }) => {
+			const transfer = transferByUser.get(item.userId);
+			return {
+				rank,
+				userId: item.userId,
+				displayName: item.user.displayName,
+				email: item.user.email,
+				phone: item.user.phone,
+				prediction: { homeGoals: item.homeGoals, awayGoals: item.awayGoals, firstGoalMinute: item.firstGoalMinute, submittedAt: item.createdAt },
+				breakdown,
+				tieBreaks: Object.fromEntries(DEFAULT_TIE_BREAKS.map((name, i) => [name, tieBreaks[i]])),
+				prizeMinorUnits: amountMinorUnits,
+				payout: transfer && {
+					idempotencyKey: transfer.idempotencyKey,
+					status: transfer.status,
+					amountMinorUnits: transfer.amountMinorUnits,
+					reference: transfer.reference,
+					detail: transfer.detail,
+					lastAttemptAt: transfer.createdAt,
+				},
+			};
+		});
+
+		return {
+			pot,
+			event,
+			transitions,
+			notes,
+			override,
+			ledger,
+			predictionCount: predictions.length,
+			result,
+			prize: { ...splitPrizePool(pot.prizeAmountMinorUnits), winnerCount: pot.winnerCount },
+			winners,
+		};
 	}
 
 	async addNote(adminId: string, potId: string, note: string) {

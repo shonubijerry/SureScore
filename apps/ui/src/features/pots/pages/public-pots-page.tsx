@@ -1,12 +1,12 @@
 import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Section } from '../../../components/bits'
-import { fromQuery, PotList } from '../components/pot-list'
+import { PotList } from '../components/pot-list'
 import { useAuth } from '../../auth/auth-context'
 import { queryString } from '../../../lib/api'
 import { endOfDayIso, startOfDayIso, toDateInput } from '../../../lib/format'
 import type { PotCard as Pot } from '../../../lib/types'
-import { useApi } from '../../../lib/use-api'
+import { usePaged } from '../../../lib/use-paged'
 
 const dayOffset = (days: number) => toDateInput(new Date(Date.now() + days * 86_400_000))
 
@@ -27,12 +27,13 @@ export default function PotsPage() {
 
   const setRange = (next: { from: string; to: string }) => setParams(next.from || next.to ? Object.fromEntries(Object.entries(next).filter(([, v]) => v)) : {}, { replace: true })
 
-  const query = useApi<{ pots: Pot[] }>(
+  const list = usePaged<Pot, 'pots'>(
     `/api/discover/pots${queryString({
       from: from ? startOfDayIso(from) : undefined,
       to: to ? endOfDayIso(to) : undefined,
       countryCode: user?.countryCode,
     })}`,
+    'pots',
   )
 
   return (
@@ -61,7 +62,7 @@ export default function PotsPage() {
           </label>
         </div>
       </div>
-      <PotList list={fromQuery(query, query.data?.pots)} empty="No pots match these dates." />
+      <PotList list={list} empty="No pots match these dates." />
     </Section>
   )
 }

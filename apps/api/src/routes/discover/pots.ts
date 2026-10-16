@@ -1,7 +1,7 @@
 import { OpenAPIRoute, NotFoundException, contentJson } from "chanfana";
 import { z } from "zod";
 import { createDbClient } from "@surescore/db";
-import { pageArgs, pageQuery, toPage } from "../../http/pagination.js";
+import { paginate, pageQuery, type SortOrder } from "../../http/pagination.js";
 import type { AppContext } from "../../types.js";
 import { potCard, potCardInclude } from "../../http/views.js";
 import { assertPotAccess } from "../../modules/pots/pot-access.js";
@@ -9,6 +9,13 @@ import { potCardSchema } from "../pots/schema.js";
 
 // Pots people can still browse; Draft (unfunded), settled/cancelled and private pots stay out of discovery.
 const DISCOVERABLE_STATUSES = ["Open", "Locked", "Live"];
+
+/** Soonest match first; newest pot first within a match. */
+const byKickoff: SortOrder = [
+	{ path: "event.kickoffTimeUtc", dir: "asc", type: "date" },
+	{ path: "createdAt", dir: "desc", type: "date" },
+	{ path: "id", dir: "asc" },
+];
 
 export class ListPublicPotsEndpoint extends OpenAPIRoute {
 	schema = {
@@ -34,19 +41,16 @@ export class ListPublicPotsEndpoint extends OpenAPIRoute {
 			...(query.from && { gte: new Date(query.from) }),
 			...(query.to && { lte: new Date(query.to) }),
 		};
-		const rows = await createDbClient(c.env.DB).pot.findMany({
-			where: {
-				status: { in: DISCOVERABLE_STATUSES },
-				isPrivate: false,
-				...(query.eventId && { eventId: query.eventId }),
-				...(query.countryCode && { countryCode: query.countryCode.toUpperCase() }),
-				...(Object.keys(kickoff).length && { event: { kickoffTimeUtc: kickoff } }),
-			},
-			include: potCardInclude,
-			orderBy: [{ event: { kickoffTimeUtc: "asc" } }, { createdAt: "desc" }, { id: "asc" }],
-			...pageArgs(query),
-		});
-		const { items, nextCursor } = toPage(rows, query.limit);
+		const where = {
+			status: { in: DISCOVERABLE_STATUSES },
+			isPrivate: false,
+			...(query.eventId && { eventId: query.eventId }),
+			...(query.countryCode && { countryCode: query.countryCode.toUpperCase() }),
+			...(Object.keys(kickoff).length && { event: { kickoffTimeUtc: kickoff } }),
+		};
+		const { items, nextCursor } = await paginate(byKickoff, query, where, (args) =>
+			createDbClient(c.env.DB).pot.findMany({ ...args, include: potCardInclude }),
+		);
 		const now = new Date();
 		return c.json({ pots: items.map((pot) => potCard(pot, now)), nextCursor });
 	}

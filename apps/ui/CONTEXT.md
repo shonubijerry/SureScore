@@ -23,6 +23,7 @@
   - home/, help/: home page, FAQ
 - components/: generic building blocks used across features (layout, modal, bits, info tip, phone field)
 - lib/: app-wide plumbing (API client, useApi/usePaged hooks, formatters, API types)
+- Every list uses `usePaged` (lib/use-paged.ts: 1000 rows per request, 50 per screen page, "Load more" by cursor) and renders `pageItems` with `Pager` (components/pager.tsx); a full in-memory list uses `usePages`. Sizes live in @surescore/shared pagination
 - Put new code in its feature folder; promote it to components/ or lib/ only once a second feature needs it
 
 ## Product conventions

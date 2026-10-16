@@ -1,7 +1,7 @@
 import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
 import { createDbClient } from "@surescore/db";
-import { pageArgs, pageQuery, toPage } from "../../http/pagination.js";
+import { newestFirst, paginate, pageQuery } from "../../http/pagination.js";
 import type { AppContext } from "../../types.js";
 import { potCard, potCardInclude } from "../../http/views.js";
 import { potCardSchema } from "./schema.js";
@@ -49,19 +49,19 @@ export class ListPotsEndpoint extends OpenAPIRoute {
 		const userId = c.get("userId");
 		const created = { potterId: userId };
 		const predicted = { potterId: { not: userId }, predictions: { some: { userId } } };
-		const rows = await createDbClient(c.env.DB).pot.findMany({
-			where: {
-				...(query.role === "created" ? created : query.role === "predicted" ? predicted : { OR: [created, predicted] }),
-				...(query.includeCancelled === "false" && { status: { notIn: ["Cancelled", "Refunded"] } }),
-			},
-			include: {
-				...potCardInclude,
-				predictions: { where: { userId }, select: { homeGoals: true, awayGoals: true, firstGoalMinute: true }, take: 1 },
-			},
-			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-			...pageArgs(query),
-		});
-		const { items, nextCursor } = toPage(rows, query.limit);
+		const where = {
+			...(query.role === "created" ? created : query.role === "predicted" ? predicted : { OR: [created, predicted] }),
+			...(query.includeCancelled === "false" && { status: { notIn: ["Cancelled", "Refunded"] } }),
+		};
+		const { items, nextCursor } = await paginate(newestFirst, query, where, (args) =>
+			createDbClient(c.env.DB).pot.findMany({
+				...args,
+				include: {
+					...potCardInclude,
+					predictions: { where: { userId }, select: { homeGoals: true, awayGoals: true, firstGoalMinute: true }, take: 1 },
+				},
+			}),
+		);
 		const now = new Date();
 		return c.json({
 			nextCursor,

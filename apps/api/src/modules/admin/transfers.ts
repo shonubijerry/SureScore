@@ -10,7 +10,7 @@ import { attemptOf, latestPerAction } from "../pots/settlement-service.js";
 import { pickPayoutAccount } from "../payments/payout-recipient.js";
 import { enqueueTransfer } from "../payments/transfer-queue.js";
 import { inChunks } from "../../platform/chunk.js";
-import { PAGE_DEFAULT, PAGE_MAX, pageArgs } from "../../http/pagination.js";
+import { newestFirst, paginate, type PageParams } from "../../http/pagination.js";
 import type { LedgerStatus, LedgerType } from "../payments/ledger.js";
 import type { AdminPotService } from "./pots.js";
 
@@ -26,16 +26,18 @@ export class AdminTransferService {
 		this.db = createDbClient(env.DB);
 	}
 
-	/** Actions of `type`, newest first; with `status`, only those whose current (latest-attempt) state it is. */
-	async queue({ type, status, limit = PAGE_DEFAULT, cursor }: { type: TransferType; status?: LedgerStatus; limit?: number; cursor?: string }) {
-		const take = Math.min(limit, PAGE_MAX);
-		const candidates = await this.db.ledgerEntry.findMany({
-			where: { type, ...(status && { status }) },
-			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-			...pageArgs({ limit: take, cursor }),
-		});
-		const hasMore = candidates.length > take;
-		const page = candidates.slice(0, take);
+	/**
+	 * Actions of `type`, newest first; with `status`, only those whose current (latest-attempt) state
+	 * it is; with `userId`, only that user's. The cursor pages over ledger rows, so a page may hold
+	 * fewer actions than `limit` once older attempts are folded into their latest one.
+	 */
+	async queue({ type, status, userId, ...params }: { type: TransferType; status?: LedgerStatus; userId?: string } & PageParams) {
+		const { items: page, nextCursor } = await paginate(
+			newestFirst,
+			params,
+			{ type, ...(status && { status }), ...(userId && { userId }) },
+			(args) => this.db.ledgerEntry.findMany(args),
+		);
 		const keys = [...new Set(page.map((r) => r.idempotencyKey))];
 
 		const history = await inChunks(keys, (chunk) =>
@@ -92,7 +94,7 @@ export class AdminTransferService {
 					hasPayoutAccount: type === "refund" ? null : !!account,
 				};
 			});
-		return { items, nextCursor: hasMore ? page[page.length - 1].id : null };
+		return { items, nextCursor };
 	}
 
 	/** Re-queues a failed payout (to the user's current account) or refund. */
