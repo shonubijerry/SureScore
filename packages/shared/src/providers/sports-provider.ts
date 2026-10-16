@@ -19,6 +19,9 @@ export type MatchStatus = (typeof matchStatuses)[number];
 /** Statuses during which the match is in play and scores refresh every 10 minutes. */
 export const liveMatchStatuses: readonly MatchStatus[] = ["first half", "half time", "second half", "live"];
 
+/** Statuses of a match that has ended in play (providers report either). */
+export const finishedMatchStatuses: readonly MatchStatus[] = ["full time", "finished"];
+
 /**
  * Normalized internal sports event. Scores always reflect 90 minutes of
  * regulation time plus stoppage time only — extra time and penalty

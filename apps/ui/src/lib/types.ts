@@ -52,6 +52,21 @@ export interface PotCard {
   predictionLocksAt: string
   createdAt: string
   match: Match
+  /** The viewer's own pick, on lists that know who is viewing. */
+  myPrediction?: PredictionPick | null
+  /** The signed-in viewer created this pot (My pots). */
+  isPotter?: boolean
+}
+
+/** One entry of `GET /api/pots/:id/predictions` (the leaderboard before lock); picks are null until predictions lock. */
+export interface PotEntrant {
+  id: string
+  userId: string
+  displayName: string | null
+  submittedAt: string
+  homeGoals: number | null
+  awayGoals: number | null
+  firstGoalMinute: number | null
 }
 
 /** Returned when a verification code has been sent. */
@@ -78,10 +93,15 @@ export interface PredictionView {
   breakdown: ScoreBreakdown | null
 }
 
-export interface LeaderboardEntry extends PredictionPick {
+/** Picks are null before the prediction lock; breakdown is null until there is a scoreline. */
+export interface LeaderboardEntry {
   rank: number
   userId: string
   displayName: string | null
+  submittedAt: string
+  homeGoals: number | null
+  awayGoals: number | null
+  firstGoalMinute: number | null
   breakdown: ScoreBreakdown | null
 }
 

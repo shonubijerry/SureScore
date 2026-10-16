@@ -2,6 +2,7 @@ import { OpenAPIRoute, contentJson } from "chanfana";
 import { z } from "zod";
 import { MAX_FIRST_GOAL_MINUTE, MAX_PREDICTED_GOALS } from "@surescore/shared";
 import { PredictionService } from "../../modules/pots/prediction-service.js";
+import { pageQuery } from "../../http/pagination.js";
 import type { AppContext } from "../../types.js";
 import { potIdParams } from "./schema.js";
 
@@ -100,6 +101,7 @@ export class GetLeaderboardEndpoint extends OpenAPIRoute {
 								homeGoals: z.number(),
 								awayGoals: z.number(),
 								firstGoalMinute: z.number().nullable(),
+								submittedAt: z.iso.datetime(),
 								breakdown: breakdownSchema.nullable(),
 							}),
 						),
@@ -112,5 +114,44 @@ export class GetLeaderboardEndpoint extends OpenAPIRoute {
 	async handle(c: AppContext) {
 		const { params, query } = await this.getValidatedData<typeof this.schema>();
 		return c.json(await service(c).leaderboard(params.id, { userId: c.get("userId"), shareCode: query.code }));
+	}
+}
+
+export class ListPotPredictionsEndpoint extends OpenAPIRoute {
+	schema = {
+		tags: ["Predictions"],
+		summary: "Who has predicted, oldest first (the leaderboard before lock); picks are hidden until predictions lock",
+		request: {
+			params: potIdParams,
+			query: z.object({ ...pageQuery, code: z.string().optional().describe("Share code, for private pots") }),
+		},
+		responses: {
+			"200": {
+				description: "One page of predictions (cursor = last prediction id)",
+				...contentJson(
+					z.object({
+						revealed: z.boolean().describe("False before the prediction lock: picks are null"),
+						predictions: z.array(
+							z.object({
+								id: z.string(),
+								userId: z.string(),
+								displayName: z.string().nullable(),
+								submittedAt: z.iso.datetime(),
+								homeGoals: z.number().int().nullable(),
+								awayGoals: z.number().int().nullable(),
+								firstGoalMinute: z.number().int().nullable(),
+							}),
+						),
+						nextCursor: z.string().nullable(),
+					}),
+				),
+			},
+		},
+	};
+
+	async handle(c: AppContext) {
+		const { params, query } = await this.getValidatedData<typeof this.schema>();
+		const { code, ...page } = query;
+		return c.json(await service(c).entrants(params.id, { userId: c.get("userId"), shareCode: code }, page));
 	}
 }

@@ -1,12 +1,27 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { ListState, Section } from '../../../components/bits'
-import { PotCard } from '../components/pot-card'
+import { Section } from '../../../components/bits'
+import { PotList } from '../components/pot-list'
 import { ShareButtons } from '../components/share-buttons'
 import { api } from '../../../lib/api'
 import type { PotCard as Pot } from '../../../lib/types'
-import { useApi } from '../../../lib/use-api'
+import { usePaged } from '../../../lib/use-paged'
+
+const PAGE_SIZE = 10
+
+const FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'created', label: 'Created' },
+  { key: 'predicted', label: 'Predicted' },
+] as const
+type Filter = (typeof FILTERS)[number]['key']
+
+const EMPTY: Record<Filter, string> = {
+  all: "You haven't created or predicted on a pot yet. Choose a match to get started.",
+  created: "You haven't created a pot yet. Choose a match to get started.",
+  predicted: "You haven't predicted on anyone else's pot yet.",
+}
 
 /** A Draft pot is awaiting payment; it stays out of discovery until funding is verified. */
 function VerifyFunding({ pot, onDone }: { pot: Pot; onDone: () => void }) {
@@ -50,8 +65,16 @@ export default function MyPotsPage() {
     else next.delete('cancelled')
     setSearchParams(next, { replace: true })
   }
-  const query = useApi<{ pots: Pot[] }>(`/api/pots${showCancelled ? '?includeCancelled=true' : ''}`)
-  const list = { ...query, data: query.data?.pots ?? null }
+
+  const filter: Filter = FILTERS.find((f) => f.key === searchParams.get('view'))?.key ?? 'all'
+  const selectFilter = (key: Filter) => {
+    const next = new URLSearchParams(searchParams)
+    if (key === 'all') next.delete('view')
+    else next.set('view', key)
+    setSearchParams(next, { replace: true })
+  }
+
+  const list = usePaged<Pot, 'pots'>(`/api/pots?role=${filter}${showCancelled ? '&includeCancelled=true' : ''}`, PAGE_SIZE, 'pots')
 
   useEffect(() => {
     if (!verifyPotId) return
@@ -64,7 +87,7 @@ export default function MyPotsPage() {
       .then(() => {
         if (!active) return
         setAutoVerifyStatus({ isError: false, message: 'Payment confirmed! Your pot is now open.' })
-        query.reload()
+        list.reload()
       })
       .catch((err: Error) => {
         if (!active) return
@@ -117,29 +140,40 @@ export default function MyPotsPage() {
         </div>
       )}
 
+      <div role="radiogroup" aria-label="Show pots" className="grid grid-cols-3 gap-1 rounded-2xl bg-muted p-1">
+        {FILTERS.map((f) => (
+          <button
+            key={f.key}
+            role="radio"
+            aria-checked={f.key === filter}
+            onClick={() => selectFilter(f.key)}
+            className={`h-10 rounded-xl text-sm font-semibold transition-colors ${
+              f.key === filter ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       <label className="flex w-fit items-center gap-2 text-sm text-muted-foreground">
         <input type="checkbox" className="size-4 accent-primary" checked={showCancelled} onChange={(e) => toggleCancelled(e.target.checked)} />
         Show cancelled pots
       </label>
 
-      <ListState
-        query={list}
-        empty={showCancelled ? "You haven't created a pot yet. Choose a match to get started." : 'No active pots. Choose a match to create one, or show cancelled pots.'}
-      >
-        {(pots) =>
-          pots.map((pot) =>
-            pot.status === 'Draft' ? (
-              <PotCard key={pot.id} pot={pot} linked={false}>
-                <VerifyFunding pot={pot} onDone={query.reload} />
-              </PotCard>
-            ) : (
-              <PotCard key={pot.id} pot={pot}>
-                {['Open', 'Locked', 'Live'].includes(pot.status) && <ShareButtons pot={pot} />}
-              </PotCard>
-            ),
-          )
+      <PotList
+        list={list}
+        empty={showCancelled ? EMPTY[filter] : `${EMPTY[filter]} Cancelled pots are hidden.`}
+        linked={(pot) => pot.status !== 'Draft'}
+        extra={(pot) =>
+          pot.isPotter &&
+          (pot.status === 'Draft' ? (
+            <VerifyFunding pot={pot} onDone={list.reload} />
+          ) : (
+            ['Open', 'Locked', 'Live'].includes(pot.status) && <ShareButtons pot={pot} />
+          ))
         }
-      </ListState>
+      />
     </Section>
   )
 }

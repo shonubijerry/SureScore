@@ -1,16 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError, queryString } from './api'
 
-interface Page<T> {
-  matches: T[]
-  nextCursor: string | null
-}
+type Page<K extends string, T> = Record<K, T[]> & { nextCursor: string | null }
 
 /**
- * Cursor-paged GET of `path` (`{ matches, nextCursor }`), `pageSize` at a time.
+ * Cursor-paged GET of `path` (`{ [key]: items, nextCursor }`), `pageSize` at a time.
  * `loadMore` appends the next page; changing `path` starts over.
  */
-export function usePagedMatches<T>(path: string, pageSize: number) {
+export function usePaged<T, K extends string = string>(path: string, pageSize: number, key: K) {
   const [items, setItems] = useState<T[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -28,9 +25,9 @@ export function usePagedMatches<T>(path: string, pageSize: number) {
     const controller = new AbortController()
     setLoading(true)
     setError(null)
-    api<Page<T>>(url(), { signal: controller.signal })
+    api<Page<K, T>>(url(), { signal: controller.signal })
       .then((page) => {
-        setItems(page.matches)
+        setItems(page[key])
         setCursor(page.nextCursor)
       })
       .catch((e) => {
@@ -43,23 +40,26 @@ export function usePagedMatches<T>(path: string, pageSize: number) {
         if (!controller.signal.aborted) setLoading(false)
       })
     return () => controller.abort()
-  }, [url, version])
+  }, [url, key, version])
 
   const loadMore = useCallback(async () => {
     if (!cursor) return
     setLoadingMore(true)
     setError(null)
     try {
-      const page = await api<Page<T>>(url(cursor))
-      setItems((current) => [...current, ...page.matches])
+      const page = await api<Page<K, T>>(url(cursor))
+      setItems((current) => [...current, ...page[key]])
       setCursor(page.nextCursor)
     } catch (e) {
       setError(toError(e))
     } finally {
       setLoadingMore(false)
     }
-  }, [cursor, url])
+  }, [cursor, url, key])
 
   const reload = useCallback(() => setVersion((v) => v + 1), [])
   return { items, loading, loadingMore, error, hasMore: cursor !== null, loadMore, reload }
 }
+
+/** `usePaged` over a `{ matches, nextCursor }` endpoint. */
+export const usePagedMatches = <T>(path: string, pageSize: number) => usePaged<T, 'matches'>(path, pageSize, 'matches')

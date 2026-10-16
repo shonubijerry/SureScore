@@ -8,14 +8,16 @@ import { okResponse, reasonSchema } from "./schema.js";
 
 const service = (c: AppContext) => new AdminTransferService(c.env, new AdminPotService(c.env));
 
-const queueQuery = (defaultStatus: "failed" | "pending" | "successful") =>
-	z.object({ status: z.enum(["failed", "pending", "successful"]).default(defaultStatus), ...pageQuery });
+const queueQuery = z.object({
+	status: z.enum(["failed", "pending", "successful"]).optional().describe("Current state to filter by; omit for every payout/refund"),
+	...pageQuery,
+});
 
 export class PayoutQueueEndpoint extends OpenAPIRoute {
 	schema = {
 		tags: ["Admin"],
-		summary: "Payout queue (default: failed payouts awaiting retry)",
-		request: { query: queueQuery("failed") },
+		summary: "Payouts, newest first (default: all statuses)",
+		request: { query: queueQuery },
 		responses: okResponse("Payouts"),
 	};
 
@@ -28,8 +30,8 @@ export class PayoutQueueEndpoint extends OpenAPIRoute {
 export class RefundQueueEndpoint extends OpenAPIRoute {
 	schema = {
 		tags: ["Admin"],
-		summary: "Refund queue with processing status (default: pending)",
-		request: { query: queueQuery("pending") },
+		summary: "Refunds with processing status, newest first (default: all statuses)",
+		request: { query: queueQuery },
 		responses: okResponse("Refunds"),
 	};
 

@@ -26,11 +26,11 @@ export class AdminTransferService {
 		this.db = createDbClient(env.DB);
 	}
 
-	/** Actions of `type` whose current (latest-attempt) state is `status`, newest first. */
-	async queue({ type, status, limit = PAGE_DEFAULT, cursor }: { type: TransferType; status: LedgerStatus; limit?: number; cursor?: string }) {
+	/** Actions of `type`, newest first; with `status`, only those whose current (latest-attempt) state it is. */
+	async queue({ type, status, limit = PAGE_DEFAULT, cursor }: { type: TransferType; status?: LedgerStatus; limit?: number; cursor?: string }) {
 		const take = Math.min(limit, PAGE_MAX);
 		const candidates = await this.db.ledgerEntry.findMany({
-			where: { type, status },
+			where: { type, ...(status && { status }) },
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 			...pageArgs({ limit: take, cursor }),
 		});
@@ -43,7 +43,9 @@ export class AdminTransferService {
 		);
 		const attempts = new Map<string, number>();
 		for (const row of history) attempts.set(row.idempotencyKey, (attempts.get(row.idempotencyKey) ?? 0) + 1);
-		const current = latestPerAction(history).filter((row) => row.status === status);
+		// An action is listed once, on the page holding its latest attempt, so retries never repeat across pages.
+		const onPage = new Set(page.map((r) => r.id));
+		const current = latestPerAction(history).filter((row) => onPage.has(row.id) && (!status || row.status === status));
 
 		const [users, pots, accounts] = await Promise.all([
 			inChunks([...new Set(current.map((r) => r.userId))], (ids) =>

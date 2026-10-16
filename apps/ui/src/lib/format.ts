@@ -1,5 +1,5 @@
 import type { Match } from './types'
-import { getLeagueConfig, liveMatchStatuses } from '@surescore/shared'
+import { finishedMatchStatuses, getLeagueConfig, liveMatchStatuses } from '@surescore/shared'
 
 // Every supported currency is currently a 2-decimal currency (e.g. NGN/kobo).
 export const MINOR_UNITS_PER_MAJOR = 100
@@ -20,7 +20,7 @@ export const isLive = (match: Match) => liveMatchStatuses.includes(match.status)
 
 // Providers report 0-0 for fixtures that haven't kicked off, so a score is shown only while live or at full time.
 export const hasScore = (match: Match) =>
-  (isLive(match) || match.status === 'full time') && match.homeScore !== null && match.awayScore !== null
+  (isLive(match) || finishedMatchStatuses.includes(match.status)) && match.homeScore !== null && match.awayScore !== null
 
 export const isLocked = (lockIso: string) => Date.now() >= new Date(lockIso).getTime()
 
@@ -29,7 +29,9 @@ const STATUS_LABELS: Record<string, string> = {
   'first half': 'Live · 1st half',
   'half time': 'Live · Half time',
   'second half': 'Live · 2nd half',
+  live: 'Live',
   'full time': 'Full time',
+  finished: 'Full time',
   postponed: 'Postponed',
   abandoned: 'Abandoned',
 }

@@ -14,6 +14,7 @@ import {
 	EditPredictionEndpoint,
 	GetLeaderboardEndpoint,
 	GetMyPredictionEndpoint,
+	ListPotPredictionsEndpoint,
 	SubmitPredictionEndpoint,
 } from "./predictions.js";
 
@@ -31,6 +32,7 @@ potRoutes.get("/:id", GetPotEndpoint);
 potRoutes.post("/:id/verify-funding", VerifyPotFundingEndpoint);
 potRoutes.post("/:id/cancel", CancelPotEndpoint);
 potRoutes.get("/:id/settlement", GetPotSettlementEndpoint);
+potRoutes.get("/:id/predictions", ListPotPredictionsEndpoint);
 potRoutes.post("/:id/predictions", SubmitPredictionEndpoint);
 potRoutes.put("/:id/predictions", EditPredictionEndpoint);
 potRoutes.get("/:id/predictions/me", GetMyPredictionEndpoint);

@@ -40,6 +40,14 @@ export function PotCard({ pot, children, linked = true }: { pot: Pot; children?:
         ) : (
           <div className="space-y-3">{body}</div>
         )}
+        {pot.myPrediction && (
+          <p className="rounded-xl bg-muted px-3 py-2 text-sm">
+            Your pick:{' '}
+            <strong>
+              {pot.match.homeTeam} {pot.myPrediction.homeGoals} – {pot.myPrediction.awayGoals} {pot.match.awayTeam}
+            </strong>
+          </p>
+        )}
         {children}
       </CardContent>
     </Card>

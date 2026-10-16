@@ -141,6 +141,22 @@ describe("admin transfers", () => {
 		await expect(transfers.retry("admin", "payout:p1:u1", "retry please")).rejects.toThrow(/Only failed/);
 	});
 
+	it("lists every action once by default, at its latest state, even across pages", async () => {
+		await db.ledgerEntry.createMany({
+			data: [
+				entry({ entryKey: "payout:p1:u1:1", idempotencyKey: "payout:p1:u1", createdAt: new Date(1_000) }),
+				entry({ entryKey: "payout:p1:u1:2", idempotencyKey: "payout:p1:u1", status: "successful", createdAt: new Date(2_000) }),
+			],
+		});
+		const all = await transfers.queue({ type: "payout" });
+		expect(all.items).toMatchObject([{ idempotencyKey: "payout:p1:u1", status: "successful", attempts: 2 }]);
+
+		const first = await transfers.queue({ type: "payout", limit: 1 });
+		expect(first.items).toHaveLength(1);
+		const second = await transfers.queue({ type: "payout", limit: 1, cursor: first.nextCursor! });
+		expect(second.items).toEqual([]);
+	});
+
 	it("retries a failed refund only for a cancelled pot", async () => {
 		await db.ledgerEntry.create({
 			data: entry({ entryKey: "refund:p1:1", idempotencyKey: "refund:p1", type: "refund", userId: "potter", amountMinorUnits: 10_000 }),

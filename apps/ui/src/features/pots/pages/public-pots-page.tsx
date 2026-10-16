@@ -1,7 +1,7 @@
 import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { ListState, Section } from '../../../components/bits'
-import { PotCard } from '../components/pot-card'
+import { Section } from '../../../components/bits'
+import { fromQuery, PotList } from '../components/pot-list'
 import { useAuth } from '../../auth/auth-context'
 import { queryString } from '../../../lib/api'
 import { endOfDayIso, startOfDayIso, toDateInput } from '../../../lib/format'
@@ -34,7 +34,6 @@ export default function PotsPage() {
       countryCode: user?.countryCode,
     })}`,
   )
-  const list = { ...query, data: query.data?.pots ?? null }
 
   return (
     <Section title="Public pots">
@@ -62,9 +61,7 @@ export default function PotsPage() {
           </label>
         </div>
       </div>
-      <ListState query={list} empty="No pots match these dates.">
-        {(pots) => pots.map((pot) => <PotCard key={pot.id} pot={pot} />)}
-      </ListState>
+      <PotList list={fromQuery(query, query.data?.pots)} empty="No pots match these dates." />
     </Section>
   )
 }

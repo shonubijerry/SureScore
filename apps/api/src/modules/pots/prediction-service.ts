@@ -5,6 +5,7 @@
 import { HTTPException } from "hono/http-exception";
 import { createDbClient, type Pot, type Prediction, type SportsEventCache } from "@surescore/db";
 import { assertPotAccess } from "./pot-access.js";
+import { PAGE_DEFAULT, PAGE_MAX, toPage, type PageParams } from "../../http/pagination.js";
 import {
 	assertHasCompletedPayoutDetails,
 	DEFAULT_TIE_BREAKS,
@@ -160,7 +161,41 @@ export class PredictionService {
 				homeGoals: item.prediction.homeGoals,
 				awayGoals: item.prediction.awayGoals,
 				firstGoalMinute: item.prediction.firstGoalMinute,
+				submittedAt: item.prediction.createdAt.toISOString(),
 				breakdown,
+			})),
+		};
+	}
+
+	/**
+	 * Everyone who has predicted, oldest first, one keyset page at a time (`id > cursor` on the
+	 * (potId, id) index, so D1 reads only the page's rows). This is the leaderboard before lock,
+	 * when nothing is ranked yet; picks stay null until the prediction lock so they cannot be copied.
+	 */
+	async entrants(potId: string, viewer: { userId?: string; shareCode?: string }, page: PageParams = {}, now = new Date()) {
+		const pot = await this.db.pot.findUnique({ where: { id: potId }, include: { event: { select: { kickoffTimeUtc: true } } } });
+		if (!pot) return fail(404, "Pot not found.");
+		await assertPotAccess(this.db, pot, viewer);
+
+		const revealed = isPredictionLocked(pot.event.kickoffTimeUtc, now);
+		const limit = Math.min(page.limit ?? PAGE_DEFAULT, PAGE_MAX);
+		const rows = await this.db.prediction.findMany({
+			where: { potId, ...(page.cursor && { id: { gt: page.cursor } }) },
+			include: { user: { select: { displayName: true } } },
+			orderBy: { id: "asc" },
+			take: limit + 1,
+		});
+		const { items, nextCursor } = toPage(rows, limit);
+
+		return {
+			revealed,
+			nextCursor,
+			predictions: items.map(({ id, userId, createdAt, user, homeGoals, awayGoals, firstGoalMinute }) => ({
+				id,
+				userId,
+				displayName: user.displayName,
+				submittedAt: createdAt.toISOString(),
+				...(revealed ? { homeGoals, awayGoals, firstGoalMinute } : { homeGoals: null, awayGoals: null, firstGoalMinute: null }),
 			})),
 		};
 	}

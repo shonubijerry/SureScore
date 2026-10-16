@@ -145,9 +145,23 @@ describe("create pot -> fund -> predict -> settle -> payout", () => {
 		expect((await call(`/api/pots/${potId}/predictions`, alice.token, "POST", { homeGoals: 2, awayGoals: 1 })).status).toBe(201);
 		expect((await call(`/api/pots/${potId}/predictions`, bob.token, "POST", { homeGoals: 0, awayGoals: 0 })).status).toBe(201);
 
+		// My pots: the potter sees it as created (even though they predicted too), players as predicted.
+		const myPots = async (token: string, role: string) =>
+			(await call(`/api/pots?role=${role}`, token)).body.pots.map((p: { id: string; isPotter: boolean }) => [p.id, p.isPotter]);
+		expect(await myPots(potter.token, "created")).toEqual([[potId, true]]);
+		expect(await myPots(potter.token, "predicted")).toEqual([]);
+		expect(await myPots(potter.token, "all")).toEqual([[potId, true]]);
+		expect(await myPots(alice.token, "created")).toEqual([]);
+		expect(await myPots(alice.token, "predicted")).toEqual([[potId, false]]);
+		expect(await myPots(alice.token, "all")).toEqual([[potId, false]]);
+		// Each pot carries the viewer's own pick, on every tab.
+		const pick = async (token: string, role: string) => (await call(`/api/pots?role=${role}`, token)).body.pots[0].myPrediction;
+		expect(await pick(potter.token, "created")).toEqual({ homeGoals: 1, awayGoals: 1, firstGoalMinute: null });
+		expect(await pick(alice.token, "all")).toEqual({ homeGoals: 2, awayGoals: 1, firstGoalMinute: null });
+
 		await db.sportsEventCache.update({
 			where: { id: "espn:e2e" },
-			data: { kickoffTimeUtc: new Date(Date.now() - 3 * 3_600_000), status: "full time", homeScore: 2, awayScore: 1, isFinalResultOfficial: true },
+			data: { kickoffTimeUtc: new Date(Date.now() - 3 * 3_600_000), status: "finished", homeScore: 2, awayScore: 1, isFinalResultOfficial: true },
 		});
 		const pots = new PotService(testEnv);
 		await pots.syncStatuses();
@@ -304,7 +318,7 @@ describe("refunds", () => {
 
 		await db.sportsEventCache.update({
 			where: { id: "espn:nowin" },
-			data: { kickoffTimeUtc: new Date(Date.now() - 3 * 3_600_000), status: "full time", homeScore: 0, awayScore: 0, isFinalResultOfficial: true },
+			data: { kickoffTimeUtc: new Date(Date.now() - 3 * 3_600_000), status: "finished", homeScore: 0, awayScore: 0, isFinalResultOfficial: true },
 		});
 		queued.splice(0);
 		const pots = new PotService(testEnv);
@@ -423,5 +437,59 @@ describe("private pots", () => {
 		// Having predicted, the friend keeps access without the link.
 		expect((await call(`/api/discover/pots/${potId}`, friend.token)).status).toBe(200);
 		expect((await call(`/api/pots/${potId}/predictions`, friend.token, "PUT", { homeGoals: 2, awayGoals: 0 })).status).toBe(200);
+	});
+});
+
+describe("pre-lock leaderboard", () => {
+	it("pages every prediction to anyone who can see the pot, hiding picks until lock", async () => {
+		const [potter, player] = await Promise.all(["List Potter", "List Player"].map(signup));
+		await db.sportsEventCache.create({
+			data: {
+				id: "espn:list", provider: "espn", externalId: "list", league: "eng.1", homeTeam: "G", awayTeam: "H",
+				kickoffTimeUtc: new Date(Date.now() + 3 * 3_600_000), status: "scheduled", lastRefreshedAt: new Date(),
+			},
+		});
+		const account = await call("/api/payout-accounts", potter.token, "POST", { accountName: "List Potter", accountNumber: "5555555555", bankCode: "058" });
+		const potId = (await call("/api/pots", potter.token, "POST", {
+			eventId: "espn:list", prizeAmountMinorUnits: 10_000, winnerCount: 1, refundAccountId: account.body.payoutAccount.id,
+		})).body.pot.id as string;
+		await call(`/api/pots/${potId}/verify-funding`, potter.token, "POST");
+
+		// More than D1's 100 bound parameters, so the user lookup must cope too.
+		for (let i = 0; i < 120; i++) {
+			const user = await db.user.create({ data: { passwordHash: "x", passwordSalt: "x", countryCode: "NG", displayName: `Bulk ${i}` } });
+			await db.prediction.create({ data: { potId, userId: user.id, homeGoals: i % 5, awayGoals: 1 } });
+		}
+
+		// Any viewer of the pot sees who has entered, but no picks before lock.
+		const early = await call(`/api/pots/${potId}/predictions?limit=1`, player.token);
+		expect(early.status).toBe(200);
+		expect(early.body.predictions[0]).toMatchObject({ homeGoals: null, awayGoals: null, firstGoalMinute: null });
+		expect(early.body.predictions[0].submittedAt).toEqual(expect.any(String));
+		expect((await call(`/api/pots/${potId}/leaderboard`, player.token)).status).toBe(403);
+
+		const pages: { revealed: boolean; predictions: { id: string; homeGoals: number | null }[]; nextCursor: string | null }[] = [];
+		let cursor: string | null = "";
+		while (cursor !== null) {
+			const page = await call(`/api/pots/${potId}/predictions?limit=50${cursor ? `&cursor=${cursor}` : ""}`, potter.token);
+			expect(page.status).toBe(200);
+			pages.push(page.body);
+			cursor = page.body.nextCursor;
+		}
+		expect(pages.map((p) => p.predictions.length)).toEqual([50, 50, 20]);
+		const ids = pages.flatMap((p) => p.predictions.map((e) => e.id));
+		expect(new Set(ids).size).toBe(120);
+		expect(ids).toEqual([...ids].sort());
+		expect(pages.every((p) => !p.revealed && p.predictions.every((e) => e.homeGoals === null))).toBe(true);
+
+		// The default page holds all of them; once predictions lock the picks are shown.
+		await db.sportsEventCache.update({ where: { id: "espn:list" }, data: { kickoffTimeUtc: new Date(Date.now() + 5 * 60_000) } });
+		const all = (await call(`/api/pots/${potId}/predictions`, potter.token)).body;
+		expect(all).toMatchObject({ revealed: true, nextCursor: null });
+		expect(all.predictions).toHaveLength(120);
+		expect(all.predictions.find((e: { displayName: string }) => e.displayName === "Bulk 7")).toMatchObject({ homeGoals: 2, awayGoals: 1 });
+		const board = (await call(`/api/pots/${potId}/leaderboard`, player.token)).body;
+		expect(board.entries).toHaveLength(120);
+		expect(board.entries.every((e: { submittedAt: string }) => !Number.isNaN(Date.parse(e.submittedAt)))).toBe(true);
 	});
 });

@@ -2,6 +2,7 @@
 // divided. Amounts are integer minor units and always sum exactly to the
 // winner pool. No I/O.
 
+import { finishedMatchStatuses, type MatchStatus } from "../providers/sports-provider.js";
 import type { MatchOutcome } from "./scoring.js";
 
 export const PLATFORM_FEE_PERCENT = 10;
@@ -25,11 +26,12 @@ export interface SettlementMatch {
 
 /**
  * The regulation-time (90 min + stoppage) outcome a pot may settle on, or null
- * while it is not final. Only a "full time" status counts: extra time and
- * penalty phases never produce a settleable result.
+ * while it is not final. Only a finished status counts ("full time" or
+ * "finished"; adapters report the regulation-time score for both): extra time
+ * and penalty phases never produce a settleable result.
  */
 export function regulationOutcome(match: SettlementMatch): MatchOutcome | null {
-  if (match.status !== "full time" || !match.isFinalResultOfficial) return null;
+  if (!finishedMatchStatuses.includes(match.status as MatchStatus) || !match.isFinalResultOfficial) return null;
   if (match.homeScore == null || match.awayScore == null) return null;
   return {
     home: match.homeScore,

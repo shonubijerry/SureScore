@@ -17,12 +17,12 @@
 - features/{feature}/: everything for one product area, with pages/ (route screens, `*-page.tsx`) and components/ (used only by that feature)
   - auth/: auth-context.tsx (session + auth calls), pages (sign in/up, forgot password), components/otp-step.tsx
   - matches/: pages (matches, match detail, league), components (match card, match tabs, league grid)
-  - pots/: pages (public pots, pot detail, create pot, my pots), components (pot card, prediction form, leaderboard, share buttons), share.ts
+  - pots/: pages (public pots, pot detail, create pot, my pots), components (pot list: the one pot-card grid used by every pot list, pot card, prediction form, leaderboard, share buttons), share.ts
   - account/: profile page, payout accounts + modal
   - admin/: back-office pages and components (admin layout, table kit)
   - home/, help/: home page, FAQ
 - components/: generic building blocks used across features (layout, modal, bits, info tip, phone field)
-- lib/: app-wide plumbing (API client, useApi/usePagedMatches hooks, formatters, API types)
+- lib/: app-wide plumbing (API client, useApi/usePaged hooks, formatters, API types)
 - Put new code in its feature folder; promote it to components/ or lib/ only once a second feature needs it
 
 ## Product conventions

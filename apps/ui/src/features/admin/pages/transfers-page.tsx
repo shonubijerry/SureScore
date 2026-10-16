@@ -8,15 +8,15 @@ import type { TransferRow } from '../../../lib/types'
 import { Can, DataTable, ReasonForm, inputClass, toneFor, usePaged, when } from '../components/kit'
 
 export default function Transfers({ type }: { type: 'payouts' | 'refunds' }) {
-  const [status, setStatus] = useState(type === 'payouts' ? 'failed' : 'pending')
-  const query = usePaged<TransferRow>(`/api/admin/${type}${queryString({ status })}`)
+  const [status, setStatus] = useState('all')
+  const query = usePaged<TransferRow>(`/api/admin/${type}${queryString({ status: status === 'all' ? undefined : status })}`)
 
   return (
     <Section
-      title={type === 'payouts' ? 'Payout queue' : 'Refund queue'}
+      title={type === 'payouts' ? 'Payouts' : 'Refunds'}
       action={
         <select className={`${inputClass} w-auto`} value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status">
-          {['failed', 'pending', 'successful'].map((s) => (
+          {['all', 'failed', 'pending', 'successful'].map((s) => (
             <option key={s}>{s}</option>
           ))}
         </select>

@@ -27,6 +27,7 @@ model Prediction {
 
   @@unique([potId, userId])
   @@index([userId])
+  @@index([potId, id]) // keyset pages of a pot's predictions read only the page's rows
 }
 
 // Append-only edit history: the values a prediction had before each edit.

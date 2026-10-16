@@ -42,6 +42,8 @@ describe("regulationOutcome", () => {
 	const match = { status: "full time", isFinalResultOfficial: true, homeScore: 2, awayScore: 1 };
 	it("settles only on an official full-time result", () => {
 		expect(regulationOutcome(match)).toMatchObject({ home: 2, away: 1 });
+		// ESPN reports a finished match as "finished", not "full time".
+		expect(regulationOutcome({ ...match, status: "finished" })).toMatchObject({ home: 2, away: 1 });
 		expect(regulationOutcome({ ...match, status: "extra time" })).toBeNull();
 		expect(regulationOutcome({ ...match, status: "second half" })).toBeNull();
 		expect(regulationOutcome({ ...match, isFinalResultOfficial: false })).toBeNull();
